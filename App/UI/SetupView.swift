@@ -6,15 +6,20 @@ struct SetupView: View {
 
     var body: some View {
         TabView(selection: $model.selectedTab) {
+            // .id(language): a tab that is not on screen keeps its old rendering, so each tab is rebuilt
+            // when the interface language changes.
             SetupChecklistView(model: model)
+                .id(model.settings.uiLanguage)
                 .tabItem { Label(tr("Setup"), systemImage: "checklist") }
                 .tag(SetupTab.setup)
             SettingsFormView(model: model)
+                .id(model.settings.uiLanguage)
                 .tabItem { Label(tr("Settings"), systemImage: "gearshape") }
                 .tag(SetupTab.settings)
         }
         .padding(16)
-        .frame(width: 540, height: 660)
+        // UI tests get a tall window so every field is on screen and they never depend on scrolling.
+        .frame(width: 540, height: UITestMode.isActive ? 1_000 : 660)
     }
 }
 
@@ -62,7 +67,7 @@ private struct SetupChecklistView: View {
                 if !model.state.isDone(.screenRecording) {
                     HStack {
                         Text(tr("After enabling Screen Recording, restart the app."))
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(Typography.helper).foregroundStyle(.secondary)
                         Spacer()
                         Button(tr("Restart app"), action: model.relaunch)
                     }
@@ -92,7 +97,7 @@ private struct SetupChecklistView: View {
                 helpRow(stt.keyHelpText, url: stt.keyHelpURL)
                 keyRow(stt.displayName, key: stt.secretKey)
                 if let error = model.errorMessage {
-                    Text(error).font(.footnote).foregroundStyle(.red)
+                    Text(error).font(Typography.notice).foregroundStyle(.red)
                 }
             }
 
@@ -102,7 +107,7 @@ private struct SetupChecklistView: View {
                         Text(shortcut.title)
                         Spacer()
                         Text(shortcut.symbols)
-                            .font(.system(.body, design: .monospaced).weight(.semibold))
+                            .font(Typography.shortcutKey)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
@@ -119,7 +124,7 @@ private struct SetupChecklistView: View {
                 .foregroundStyle(done ? .green : .secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                Text(detail).font(.footnote).foregroundStyle(.secondary)
+                Text(detail).font(Typography.helper).foregroundStyle(.secondary)
             }
             Spacer()
             if !done { Button(action, action: perform) }
@@ -129,10 +134,10 @@ private struct SetupChecklistView: View {
     private func helpRow(_ text: String, url: URL?) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(text)
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(Typography.helper).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
-            if let url { Link(tr("Open page"), destination: url).font(.footnote) }
+            if let url { Link(tr("Open page"), destination: url).font(Typography.helper) }
         }
     }
 
@@ -179,12 +184,12 @@ private struct SetupChecklistView: View {
             }
             if let error = model.keyErrors[key] {
                 Label(error, systemImage: "xmark.octagon.fill")
-                    .font(.footnote).foregroundStyle(.red)
+                    .font(Typography.notice).foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("key-message-\(key.rawValue)")
             } else if let note = model.keyNotes[key] {
                 Label(note, systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote).foregroundStyle(.orange)
+                    .font(Typography.notice).foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("key-message-\(key.rawValue)")
             }
@@ -230,7 +235,7 @@ private struct SettingsFormView: View {
                 }
                 .pickerStyle(.segmented)
                 Text(tr("Sets speech recognition and the language of the suggested answers. Applies the next time you start a session. Auto-detect copes with mixed languages but costs more with some providers (Deepgram uses more of your credit)."))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Typography.helper).foregroundStyle(.secondary)
             }
 
             Section(tr("Models")) {
@@ -239,7 +244,7 @@ private struct SettingsFormView: View {
                 TextField(tr("Model"), text: modelBinding(provider), prompt: Text(provider.defaultModel))
                 TextField(tr("Screenshot model"), text: visionBinding(provider), prompt: Text(model.settings.visionModelName(for: provider)))
                 Text(tr("Leave empty to use the suggested model. A paid key works the same way: just save it on the Setup tab and, if you like, type a stronger model here. Change the provider on the Setup tab."))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Typography.helper).foregroundStyle(.secondary)
                 let stt = model.settings.transcriptionProvider
                 TextField(tr("Speech model (%@)", stt.displayName), text: sttBinding(stt), prompt: Text(stt.defaultModel))
             }
@@ -254,22 +259,23 @@ private struct SettingsFormView: View {
                     }
                 }
                 Text(tr("Applies the next time you start a session. With speakers instead of headphones, the microphone also hears the interviewer."))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Typography.helper).foregroundStyle(.secondary)
                 Toggle(tr("Also answer questions I say into the microphone"), isOn: $model.settings.answerMicrophoneQuestions)
                 Text(tr("For testing with your own voice, or when the interviewer is in the room. Off by default: normally only the interviewer's audio is treated as questions."))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Typography.helper).foregroundStyle(.secondary)
             }
 
             Section(tr("About you")) {
-                Text(tr("About you and your experience")).font(.footnote).foregroundStyle(.secondary)
+                Text(tr("About you and your experience")).font(Typography.helper).foregroundStyle(.secondary)
                 NoteEditor(text: $model.settings.resume, placeholder: tr("Role, years of experience, stack, projects"), height: 96, id: "about-you")
-                Text(tr("What the AI should help with")).font(.footnote).foregroundStyle(.secondary)
+                Text(tr("What the AI should help with")).font(Typography.helper).foregroundStyle(.secondary)
                 NoteEditor(text: $model.settings.roleContext, placeholder: tr("PHP and React.js interview"), height: 70, id: "ai-help")
                 Text(tr("For example: PHP and React.js interview. Help me answer questions about PHP and React.js."))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Typography.helper).foregroundStyle(.secondary)
             }
 
-            UpdatesSection(updates: model.updates, enabled: $model.settings.checkForUpdates)
+            UpdatesSection(updates: model.updates, enabled: $model.settings.checkForUpdates, language: model.settings.uiLanguage)
+                .id(model.settings.uiLanguage)
 
             Section(tr("Overlay")) {
                 HStack {
@@ -281,7 +287,7 @@ private struct SettingsFormView: View {
                 }
                 Toggle(tr("Hide overlay from screen sharing and recordings"), isOn: $model.settings.hideOverlayFromCapture)
                 Text(tr("Off by default. Best effort only: on recent macOS versions some screen-sharing apps can still capture the overlay. Use this only where it is allowed, and follow the rules of your interview or employer."))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Typography.helper).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -304,7 +310,7 @@ private struct NoteEditor: View {
             .padding(6)
             .frame(height: height)
             .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
+            .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(.separator) }
             .overlay(alignment: .topLeading) {
                 if text.isEmpty {
                     Text(placeholder)
@@ -322,6 +328,8 @@ private struct NoteEditor: View {
 private struct UpdatesSection: View {
     @ObservedObject var updates: UpdateService
     @Binding var enabled: Bool
+    /// Not read, but passed in so this section is redrawn (and re-translated) when the language changes.
+    let language: UILanguage
 
     var body: some View {
         Section(tr("Updates")) {
@@ -329,20 +337,20 @@ private struct UpdatesSection: View {
             Toggle(tr("Check for updates automatically"), isOn: $enabled)
                 .accessibilityIdentifier("updates-auto")
             HStack {
-                if !updates.status.isEmpty {
-                    Text(updates.status).font(.footnote).foregroundStyle(.secondary)
+                if updates.status != .idle {
+                    Text(updates.status.text).font(Typography.helper).foregroundStyle(.secondary)
                         .accessibilityIdentifier("updates-status")
                 }
                 Spacer()
                 Button(tr("Check now")) { updates.checkNow() }.disabled(updates.isChecking)
                     .accessibilityIdentifier("updates-check")
                 if updates.available != nil {
-                    Button(tr("Update")) { updates.installAvailable() }.buttonStyle(.borderedProminent)
+                    Button(tr("Update")) { updates.installAvailable() }.prominentGlassButtonStyle()
                         .accessibilityIdentifier("updates-install")
                 }
             }
             Text(tr("Once every few hours the app asks GitHub for the latest release. Nothing about you is sent, and updates are never installed without your confirmation."))
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(Typography.helper).foregroundStyle(.secondary)
         }
     }
 }

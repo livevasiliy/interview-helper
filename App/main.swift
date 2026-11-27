@@ -187,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !result.isVisible else { return }
         // No room for the icon: also show the app in the Dock so it is never unreachable.
         NSApp.setActivationPolicy(.regular)
-        setupModel.showMenuBarNote(tr("The menu bar is full, so macOS hides the Interview Helper icon. The app now also shows in the Dock; click it to open this window. Quitting a few menu bar apps (or ⌘-dragging icons away) frees space."))
+        setupModel.showMenuBarNote()
         showSettings()
     }
 

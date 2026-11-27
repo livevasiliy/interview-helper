@@ -74,14 +74,15 @@ struct OverlayView: View {
         self.onHide = onHide
     }
 
-    // MARK: Type scale (all derived from the user's chosen size)
+    // MARK: Type scale (all derived from the user's chosen size; floors keep every text at least 12 pt, above the
+    // HIG minimum of 10 pt, because the overlay is read at a glance during a conversation)
 
     private var headerFont: Font { .system(size: max(13, textSize * 0.72), weight: .medium) }
     private var labelFont: Font { .system(size: max(12, textSize * 0.62), weight: .medium) }
     private var questionFont: Font { .system(size: textSize * 0.86) }
     private var answerFont: Font { .system(size: textSize) }
-    private var smallFont: Font { .system(size: max(12, textSize * 0.7)) }
-    private var hintFont: Font { .system(size: max(11, textSize * 0.55)) }
+    private var smallFont: Font { .system(size: max(13, textSize * 0.7)) }
+    private var hintFont: Font { .system(size: max(12, textSize * 0.6)) }
     private var iconSize: CGFloat { max(13, textSize * 0.72) }
 
     var body: some View {
@@ -116,6 +117,10 @@ struct OverlayView: View {
     }
 
     private func headerRow(labeled: Bool) -> some View {
+        GlassGroup(spacing: 10) { headerContent(labeled: labeled) }
+    }
+
+    private func headerContent(labeled: Bool) -> some View {
         HStack(spacing: labeled ? 6 : 10) {
             Circle().fill(statusColor).frame(width: 9, height: 9).accessibilityHidden(true)
             Text(statusText)
@@ -146,12 +151,11 @@ struct OverlayView: View {
                 Image(systemName: symbol).font(.system(size: iconSize))
                 if let caption { Text(caption).font(hintFont).lineLimit(1).fixedSize() }
             }
-            .padding(.horizontal, caption == nil ? 0 : 6)
-            .frame(minWidth: max(28, iconSize + 12), minHeight: max(28, iconSize + 12))
+            .padding(.horizontal, caption == nil ? 0 : 2)
+            .frame(minWidth: max(26, iconSize + 10), minHeight: max(26, iconSize + 10))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .glassButtonStyle(circular: caption == nil)
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(id)
@@ -185,9 +189,9 @@ struct OverlayView: View {
                 .frame(height: smallFontSize + 8)
             Image(systemName: "return").foregroundStyle(.tertiary).accessibilityHidden(true)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .glassSurface(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .opacity(content.state == .running ? 1 : 0.55)
     }
 

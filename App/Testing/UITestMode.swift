@@ -11,6 +11,7 @@ import InterviewCore
 ///   --ui-permissions=denied  microphone and screen recording not granted
 ///   --ui-autostart         start a session right after launch
 ///   --ui-update=9.9.9      pretend a newer release exists
+///   --ui-language=ru       start with the Russian interface (default is English)
 enum UITestMode {
     static let arguments = CommandLine.arguments
     static var isActive: Bool { arguments.contains("--ui-testing") }
@@ -35,7 +36,7 @@ enum UITestMode {
         if !has("--ui-keep-state") {
             defaults.removePersistentDomain(forName: suiteName)
             // English regardless of the machine's language, so the tests can find labels by text.
-            UserDefaultsSettingsStore(defaults: defaults).save(AppSettings(uiLanguage: .english))
+            UserDefaultsSettingsStore(defaults: defaults).save(AppSettings(uiLanguage: value(of: "--ui-language") == "ru" ? .russian : .english))
         }
         return defaults
     }()

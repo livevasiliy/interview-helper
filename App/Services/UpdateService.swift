@@ -2,13 +2,34 @@ import AppKit
 import Foundation
 import InterviewCore
 
+/// What the Updates section says. Stored as a state, not as text, so a language switch re-translates it.
+enum UpdateStatus: Equatable {
+    case idle
+    case checking
+    case upToDate(String)
+    case available(String)
+    case failed(String)
+    case installing
+
+    var text: String {
+        switch self {
+        case .idle: return ""
+        case .checking: return tr("Checking…")
+        case .upToDate(let version): return tr("You have the latest version (%@).", version)
+        case .available(let version): return tr("Version %@ is available.", version)
+        case .failed(let message): return message
+        case .installing: return tr("Installing…")
+        }
+    }
+}
+
 /// Looks for a newer release in the background and, on the user's say-so, installs it with the same
 /// verified installer script the README offers. Never interrupts: an update is only announced in the
 /// menu and in Settings, because the app is used during interviews.
 @MainActor
 final class UpdateService: ObservableObject {
     @Published private(set) var available: ReleaseInfo?
-    @Published private(set) var status = ""
+    @Published private(set) var status: UpdateStatus = .idle
     @Published private(set) var isChecking = false
 
     /// A new check at most this often, however often the timer fires or the app is relaunched.
@@ -54,27 +75,27 @@ final class UpdateService: ObservableObject {
             if let text = UITestMode.value(of: "--ui-update"), let version = AppVersion(text) {
                 available = ReleaseInfo(tag: "v\(version)", version: version,
                                         pageURL: URL(string: "https://example.invalid/release")!, notes: "")
-                status = tr("Version %@ is available.", version.description)
+                status = .available(version.description)
             } else if manual {
-                status = tr("You have the latest version (%@).", currentVersion)
+                status = .upToDate(currentVersion)
             }
             return
         }
         isChecking = true
-        if manual { status = tr("Checking…") }
+        if manual { status = .checking }
         defer { isChecking = false }
         do {
             let release = try await checker.newerRelease(than: currentVersion)
             defaults.set(Date(), forKey: Self.lastCheckKey)
             available = release
             if let release {
-                status = tr("Version %@ is available.", release.version.description)
+                status = .available(release.version.description)
             } else if manual {
-                status = tr("You have the latest version (%@).", currentVersion)
+                status = .upToDate(currentVersion)
             }
         } catch {
             // A background failure (offline, rate limit) stays silent and is retried on the next tick.
-            if manual { status = error.localizedDescription }
+            if manual { status = .failed(error.localizedDescription) }
         }
     }
 
@@ -122,9 +143,9 @@ final class UpdateService: ObservableObject {
         process.arguments = ["-c", "(curl -fsSL \"$1\" | VERSION=\"$2\" bash) > \"$3\" 2>&1 &", "_", url, tag, log]
         do {
             try process.run()
-            status = tr("Installing…")
+            status = .installing
         } catch {
-            status = error.localizedDescription
+            status = .failed(error.localizedDescription)
         }
     }
 }

@@ -21,6 +21,8 @@ final class SetupViewModel: ObservableObject {
             settingsStore.save(settings)
             if oldValue.uiLanguage != settings.uiLanguage {
                 L10n.language = settings.uiLanguage.resolved()
+                keyErrors = [:]   // these were produced in the old language
+                keyNotes = [:]
             }
             if oldValue.answerProvider != settings.answerProvider
                 || oldValue.transcriptionProvider != settings.transcriptionProvider {
@@ -43,10 +45,28 @@ final class SetupViewModel: ObservableObject {
     private let checkKey: (String, SecretKey) async -> KeyCheck
     @Published var errorMessage: String?
     /// Shown at the top of the Setup tab when the user tried to start a session too early.
-    @Published private(set) var notice: String?
+    /// Kept as state, not text, so the message is translated when drawn and follows a language switch.
+    @Published private(set) var noticeSteps: [SetupStep]?
+    var notice: String? {
+        guard let steps = noticeSteps else { return nil }
+        let names = steps.map { step -> String in
+            switch step {
+            case .microphone: return tr("Microphone permission")
+            case .screenRecording: return tr("Screen Recording permission")
+            case .answerKey: return tr("API key for %@", settings.answerProvider.displayName)
+            case .transcriptionKey: return tr("API key for %@", settings.transcriptionProvider.displayName)
+            }
+        }
+        return names.isEmpty
+            ? tr("The session could not start. Check the keys and permissions below.")
+            : tr("Can't start a session yet. Still missing: %@.", names.joined(separator: ", "))
+    }
     @Published var selectedTab: SetupTab = .setup
     /// Set when macOS has no room for the menu bar icon, so the user knows how to reach the app.
-    @Published private(set) var menuBarNote: String?
+    @Published private(set) var menuBarIsFull = false
+    var menuBarNote: String? {
+        menuBarIsFull ? tr("The menu bar is full, so macOS hides the Interview Helper icon. The app now also shows in the Dock; click it to open this window. Quitting a few menu bar apps (or ⌘-dragging icons away) frees space.") : nil
+    }
 
     let updates = UpdateService()
     private var activationObserver: NSObjectProtocol?
@@ -82,24 +102,14 @@ final class SetupViewModel: ObservableObject {
         inputDevices = AudioInputDevices.all()
         defaultInputName = AudioInputDevices.defaultInputName()
         state = SetupState.current(permissions: permissions, secrets: secrets, provider: settings.answerProvider, transcription: settings.transcriptionProvider)
-        if state.isReady { notice = nil }
+        if state.isReady { noticeSteps = nil }
     }
 
-    func showMenuBarNote(_ text: String) { menuBarNote = text }
+    func showMenuBarNote() { menuBarIsFull = true }
 
     /// Called when a session could not start: say exactly what is missing and jump to the checklist.
     func showBlocked(missing: [SetupStep]) {
-        let names = missing.map { step -> String in
-            switch step {
-            case .microphone: return tr("Microphone permission")
-            case .screenRecording: return tr("Screen Recording permission")
-            case .answerKey: return tr("API key for %@", settings.answerProvider.displayName)
-            case .transcriptionKey: return tr("API key for %@", settings.transcriptionProvider.displayName)
-            }
-        }
-        notice = names.isEmpty
-            ? tr("The session could not start. Check the keys and permissions below.")
-            : tr("Can't start a session yet. Still missing: %@.", names.joined(separator: ", "))
+        noticeSteps = missing
         selectedTab = .setup
     }
 

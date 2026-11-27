@@ -62,7 +62,7 @@ class UITestCase: XCTestCase {
 
     func openSettingsTab() {
         let t = tab("Settings")
-        XCTAssertTrue(t.waitForExistence(timeout: 5), "Settings tab not found")
+        XCTAssertTrue(t.waitForExistence(timeout: 15), "Settings tab not found")   // the first launch of a run is slow
         t.click()
     }
 
@@ -99,30 +99,30 @@ class UITestCase: XCTestCase {
         item.click()
     }
 
-    /// Scrolls the Settings form until `element` can be clicked.
+    /// Scrolls the Settings window's form until `element` is clearly on screen: clickable and not hugging the
+    /// bottom edge, where a click can land on the border instead of the control.
     func scrollIntoView(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(element.waitForExistence(timeout: 5), "\(element) not found", file: file, line: line)
         let form = app.windows["Interview Helper"].scrollViews.firstMatch
-        for _ in 0..<12 where !element.isHittable {
-            form.scroll(byDeltaX: 0, deltaY: -250)
+        for _ in 0..<30 {
+            let frame = element.frame, area = form.frame
+            if element.isHittable && frame.minY > area.minY + 20 && frame.maxY < area.maxY - 60 { break }
+            // Down when the element is below or hugging the bottom edge, up when it slid past the top.
+            form.scroll(byDeltaX: 0, deltaY: frame.minY < area.minY + 20 && frame.minY > area.minY - 4_000 ? 120 : -120)
         }
         XCTAssertTrue(element.isHittable, "\(element) never became visible", file: file, line: line)
     }
 
-    /// Puts `text` into a field through the clipboard and ⌘V. Typing key by key goes through the active
-    /// keyboard layout, so with a Russian layout on, ordinary text fields would receive garbage.
-    func paste(_ text: String, into field: XCUIElement) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-        XCTAssertTrue(field.waitForExistence(timeout: 5), "\(field) not found")
-        if !field.isHittable { scrollIntoView(field) }
-        field.click()
-        field.typeKey("v", modifierFlags: .command)
+    /// True when `element` sits inside the Settings window (the overlay is a separate panel).
+    private func isInSettingsWindow(_ element: XCUIElement) -> Bool {
+        let window = app.windows["Interview Helper"]
+        return window.exists && window.frame.intersects(element.frame)
     }
 
     func type(_ text: String, into field: XCUIElement) {
         XCTAssertTrue(field.waitForExistence(timeout: 5), "\(field) not found")
-        if !field.isHittable { scrollIntoView(field) }
+        if isInSettingsWindow(field) { scrollIntoView(field) }
+        Thread.sleep(forTimeInterval: 0.4)   // a closing pop-up menu or a freshly drawn field can still hold focus
         field.click()
         field.typeText(text)
     }
