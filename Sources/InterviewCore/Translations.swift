@@ -194,5 +194,16 @@ enum Translations {
         "Check now": "Проверить сейчас",
         "Update": "Обновить",
         "Once every few hours the app asks GitHub for the latest release. Nothing about you is sent, and updates are never installed without your confirmation.": "Раз в несколько часов приложение спрашивает у GitHub последний релиз. Ничего о вас не отправляется, а обновления никогда не ставятся без вашего подтверждения.",
+        "Paste the key first.": "Сначала вставьте ключ.",
+        "The key contains spaces or line breaks. Paste only the key itself.": "В ключе есть пробелы или переносы строк. Вставьте только сам ключ.",
+        "The key contains characters that are not allowed. Copy it again from the provider's page.": "В ключе недопустимые символы. Скопируйте его заново со страницы провайдера.",
+        "The key is too short.": "Ключ слишком короткий.",
+        "This looks like a key for another service, not OpenAI (they start with sk-).": "Похоже на ключ другого сервиса, а не OpenAI (их ключи начинаются с sk-).",
+        "This looks like a key for another service, not Deepgram.": "Похоже на ключ другого сервиса, а не Deepgram.",
+        "This does not look like a %@ key (they usually start with %@).": "Не похоже на ключ %@ (обычно они начинаются с %@).",
+        "%@ did not accept this key. Check that you copied all of it.": "%@ не принял этот ключ. Проверьте, что скопировали его целиком.",
+        "Could not verify the key right now. It was saved; you will see an error when it is used if it is wrong.": "Сейчас не удалось проверить ключ. Он сохранён; если он неверный, вы увидите ошибку при использовании.",
+        "Could not verify the key right now (HTTP %ld). It was saved; you will see an error when it is used if it is wrong.": "Сейчас не удалось проверить ключ (HTTP %ld). Он сохранён; если он неверный, вы увидите ошибку при использовании.",
+        "Could not reach %@ to verify the key. It was saved; you will see an error when it is used if it is wrong.": "Не удалось связаться с %@ для проверки ключа. Он сохранён; если он неверный, вы увидите ошибку при использовании.",
     ]
 }

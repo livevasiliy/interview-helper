@@ -12,6 +12,7 @@ struct TypedQuestionField: NSViewRepresentable {
     func makeNSView(context: Context) -> ClickToTypeField {
         let field = ClickToTypeField()
         field.delegate = context.coordinator
+        field.setAccessibilityIdentifier("typed-question")
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
@@ -61,6 +62,11 @@ struct TypedQuestionField: NSViewRepresentable {
 final class ClickToTypeField: NSTextField {
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    /// The overlay panel does not activate the app, so the Edit menu's shortcuts may not reach it.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        EditShortcuts.handle(event, in: self) || super.performKeyEquivalent(with: event)
+    }
 
     /// Ends editing and hands the keyboard back; the app that was frontmost never lost activation.
     func giveUpFocus() {

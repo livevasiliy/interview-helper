@@ -37,9 +37,9 @@ final class SessionCoordinator: ObservableObject {
     private let maxWarnings = 5
 
     init(
-        secrets: SecretStore = KeychainSecretStore(service: SetupViewModel.keychainService),
-        settingsStore: SettingsStore = UserDefaultsSettingsStore(),
-        permissions: PermissionsService = SystemPermissionsService()
+        secrets: SecretStore = UITestMode.secretStore(),
+        settingsStore: SettingsStore = UITestMode.settingsStore(),
+        permissions: PermissionsService = UITestMode.permissions()
     ) {
         self.secrets = secrets
         self.settingsStore = settingsStore
@@ -87,28 +87,33 @@ final class SessionCoordinator: ObservableObject {
         // Ollama needs no key; for the others `isReady` already guarantees one is saved.
         let answerKey: String = provider.secretKey.map { ((try? secrets.get($0)) ?? nil) ?? "" } ?? ""
 
-        let system = SystemAudioCapture()
-        let microphone = MicrophoneCapture(deviceUID: settings.microphoneDeviceUID)
-        let controller = SessionController(
-            systemAudio: system,
-            microphone: microphone,
-            transcriber: stt.makeTranscriber(
-                apiKey: sttKey, model: settings.transcriptionModelName(for: stt), language: settings.interviewLanguage
-            ),
-            answerEngine: AnswerEngineFactory.make(provider: provider, apiKey: answerKey, model: settings.modelName(for: provider)),
-            visionEngine: AnswerEngineFactory.make(
-                provider: provider, apiKey: answerKey, model: settings.visionModelName(for: provider), vision: true
-            ),
-            promptBuilder: settings.promptBuilder,
-            answerFromMicrophone: settings.answerMicrophoneQuestions
-        )
-        system.onUnexpectedStop = { [weak controller] error in
-            let reason = error.localizedDescription
-            Task { await controller?.sourceStopped(.interviewer, reason: reason) }
-        }
-        microphone.onUnexpectedStop = { [weak controller] error in
-            let reason = error.localizedDescription
-            Task { await controller?.sourceStopped(.me, reason: reason) }
+        let controller: SessionController
+        if UITestMode.isActive {
+            controller = UITestMode.makeController(settings: settings)
+        } else {
+            let system = SystemAudioCapture()
+            let microphone = MicrophoneCapture(deviceUID: settings.microphoneDeviceUID)
+            controller = SessionController(
+                systemAudio: system,
+                microphone: microphone,
+                transcriber: stt.makeTranscriber(
+                    apiKey: sttKey, model: settings.transcriptionModelName(for: stt), language: settings.interviewLanguage
+                ),
+                answerEngine: AnswerEngineFactory.make(provider: provider, apiKey: answerKey, model: settings.modelName(for: provider)),
+                visionEngine: AnswerEngineFactory.make(
+                    provider: provider, apiKey: answerKey, model: settings.visionModelName(for: provider), vision: true
+                ),
+                promptBuilder: settings.promptBuilder,
+                answerFromMicrophone: settings.answerMicrophoneQuestions
+            )
+            system.onUnexpectedStop = { [weak controller] error in
+                let reason = error.localizedDescription
+                Task { await controller?.sourceStopped(.interviewer, reason: reason) }
+            }
+            microphone.onUnexpectedStop = { [weak controller] error in
+                let reason = error.localizedDescription
+                Task { await controller?.sourceStopped(.me, reason: reason) }
+            }
         }
 
         resetOutput()
@@ -152,7 +157,7 @@ final class SessionCoordinator: ObservableObject {
         Task { [weak self] in
             defer { self?.isCapturingScreen = false }
             do {
-                let jpeg = try await ScreenshotCapture.captureJPEG()
+                let jpeg = UITestMode.isActive ? UITestMode.screenshot : try await ScreenshotCapture.captureJPEG()
                 await controller.answerScreen(jpeg: jpeg)
             } catch {
                 self?.answerError = error.localizedDescription

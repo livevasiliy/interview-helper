@@ -39,3 +39,28 @@ targets:
           # Xcode adds the debugger entitlement get-task-allow to development-signed builds; a build meant
           # for installing should not let other processes attach to it (the app holds API keys in memory).
           CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+  InterviewHelperUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - UITests
+    dependencies:
+      - target: InterviewHelper-macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.interviewhelper.uitests
+        TEST_TARGET_NAME: InterviewHelper-macOS
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "Apple Development"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  InterviewHelper-macOS:
+    build:
+      targets:
+        InterviewHelper-macOS: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - InterviewHelperUITests

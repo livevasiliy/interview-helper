@@ -31,6 +31,7 @@ final class UpdateService: ObservableObject {
     /// Checks shortly after launch, then re-evaluates every 30 minutes; the 6-hour rule keeps requests rare.
     func start(isEnabled: @escaping () -> Bool) {
         self.isEnabled = isEnabled
+        if UITestMode.isActive { Task { await check(manual: false) }; return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in self?.checkIfDue() }
         timer = Timer.scheduledTimer(withTimeInterval: 1_800, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.checkIfDue() }
@@ -48,6 +49,17 @@ final class UpdateService: ObservableObject {
     /// `manual`: the user asked, so say the outcome, including failures.
     func check(manual: Bool) async {
         guard !isChecking else { return }
+        if UITestMode.isActive {
+            // No network in UI tests: report a pretend release when asked to, otherwise "up to date".
+            if let text = UITestMode.value(of: "--ui-update"), let version = AppVersion(text) {
+                available = ReleaseInfo(tag: "v\(version)", version: version,
+                                        pageURL: URL(string: "https://example.invalid/release")!, notes: "")
+                status = tr("Version %@ is available.", version.description)
+            } else if manual {
+                status = tr("You have the latest version (%@).", currentVersion)
+            }
+            return
+        }
         isChecking = true
         if manual { status = tr("Checking…") }
         defer { isChecking = false }

@@ -78,6 +78,10 @@ Manual run list lives in `.10x/decisions/qa/interview-helper.md` (verified so fa
 
 `.10x/` holds the team-process state (specs, ADRs, per-role decisions, `status.md`, `handoff.md`, security/privacy review). Read `.10x/decisions/sde/interview-helper.md` for the running implementation log and deviations. The folder is not a git repository yet.
 
+## UI tests (XCUITest)
+
+`UITests/` drives the real app through its windows with the app launched as `InterviewHelper --ui-testing` (`App/Testing/UITestMode.swift`: throw-away settings suite, in-memory keys, fake permissions, canned audio/transcription/answers, no hotkeys, no network). Run: `xcodebuild test -project InterviewHelper.xcodeproj -scheme InterviewHelper-macOS -destination 'platform=macOS' -derivedDataPath .build/xcode-ui` (first run asks to allow UI automation). **They take over the keyboard and mouse: do not use the Mac while they run**, or your typing lands in the app under test and the results are meaningless. Elements are found by `accessibilityIdentifier`; add one when you add a control a test needs.
+
 ## Updates
 
 `UpdateChecker` (Core, tested) reads `api.github.com/repos/livevasiliy/interview-helper/releases/latest` and compares its tag with `CFBundleShortVersionString` (taken from `MARKETING_VERSION` in `project.yml`: bump it for every release, or the updater offers the same version forever). `UpdateService` (App) checks 30 s after launch and then at most every 6 h, announces a new version only in the menu and Settings, and installs on confirmation by running `scripts/install.sh` pinned to the release tag (so the tag must contain that script). Release assets must be named `InterviewHelper.dmg` and `InterviewHelper.dmg.sha256` (`scripts/build-release.sh` produces them). Only apps in `/Applications` or `~/Applications` are replaced; a dev build just opens the release page.

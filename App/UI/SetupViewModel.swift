@@ -35,6 +35,12 @@ final class SetupViewModel: ObservableObject {
     @Published var drafts: [SecretKey: String] = [:]
     /// Slots whose saved key is being replaced: only then is the input field shown for a saved key.
     @Published var replacing: Set<SecretKey> = []
+    /// Slots whose key is being checked with the provider right now.
+    @Published private(set) var validating: Set<SecretKey> = []
+    /// Why a key was not saved (shown in red) and notes about a saved one (shown in orange).
+    @Published private(set) var keyErrors: [SecretKey: String] = [:]
+    @Published private(set) var keyNotes: [SecretKey: String] = [:]
+    private let checkKey: (String, SecretKey) async -> KeyCheck
     @Published var errorMessage: String?
     /// Shown at the top of the Setup tab when the user tried to start a session too early.
     @Published private(set) var notice: String?
@@ -46,10 +52,12 @@ final class SetupViewModel: ObservableObject {
     private var activationObserver: NSObjectProtocol?
 
     init(
-        permissions: PermissionsService = SystemPermissionsService(),
-        secrets: SecretStore = KeychainSecretStore(service: SetupViewModel.keychainService),
-        settingsStore: SettingsStore = UserDefaultsSettingsStore()
+        permissions: PermissionsService = UITestMode.permissions(),
+        secrets: SecretStore = UITestMode.secretStore(),
+        settingsStore: SettingsStore = UITestMode.settingsStore(),
+        checkKey: @escaping (String, SecretKey) async -> KeyCheck = UITestMode.keyChecker()
     ) {
+        self.checkKey = checkKey
         self.permissions = permissions
         self.secrets = secrets
         self.settingsStore = settingsStore
@@ -114,21 +122,57 @@ final class SetupViewModel: ObservableObject {
     }
 
     func draft(_ key: SecretKey) -> Binding<String> {
-        Binding(get: { self.drafts[key] ?? "" }, set: { self.drafts[key] = $0 })
+        Binding(
+            get: { self.drafts[key] ?? "" },
+            set: { self.drafts[key] = $0; self.keyErrors[key] = nil }
+        )
     }
 
     func hasKey(_ key: SecretKey) -> Bool { (try? secrets.get(key)) ?? nil != nil }
 
+    /// Pastes the clipboard into the key field (also what ⌘V does in the field itself).
+    func pasteKey(_ key: SecretKey) {
+        guard let text = NSPasteboard.general.string(forType: .string) else { return }
+        drafts[key] = text
+        keyErrors[key] = nil
+    }
+
+    /// Cleans the pasted text, checks its format, asks the provider whether it accepts the key, and only
+    /// then saves it. A key the provider rejects is never stored; one that could not be verified is.
     func saveKey(_ key: SecretKey) {
-        do {
-            try secrets.set(drafts[key] ?? "", for: key)
-            errorMessage = nil
-            drafts[key] = ""
-            replacing.remove(key)
-        } catch {
-            errorMessage = "\(error)"
+        guard !validating.contains(key) else { return }
+        let normalized = KeyValidator.normalize(drafts[key] ?? "")
+        keyErrors[key] = nil
+        keyNotes[key] = nil
+        if let problem = KeyValidator.formatProblem(normalized, for: key) {
+            keyErrors[key] = problem
+            return
         }
-        refresh()
+        validating.insert(key)
+        Task {
+            let result = await checkKey(normalized, key)
+            validating.remove(key)
+            var note = KeyValidator.formatWarning(normalized, for: key)
+            switch result {
+            case .rejected(let message):
+                keyErrors[key] = message
+                return
+            case .unverified(let message):
+                note = message
+            case .valid:
+                break
+            }
+            do {
+                try secrets.set(normalized, for: key)
+                errorMessage = nil
+                drafts[key] = ""
+                replacing.remove(key)
+                keyNotes[key] = note
+            } catch {
+                errorMessage = "\(error)"
+            }
+            refresh()
+        }
     }
 
     func removeKey(_ key: SecretKey) {
@@ -136,6 +180,8 @@ final class SetupViewModel: ObservableObject {
             try secrets.set(nil, for: key)
             errorMessage = nil
             replacing.remove(key)
+            keyNotes[key] = nil
+            keyErrors[key] = nil
         } catch {
             errorMessage = "\(error)"
         }

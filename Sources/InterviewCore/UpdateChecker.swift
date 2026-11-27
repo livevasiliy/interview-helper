@@ -35,6 +35,13 @@ public struct ReleaseInfo: Equatable, Sendable {
     public let version: AppVersion
     public let pageURL: URL
     public let notes: String
+
+    public init(tag: String, version: AppVersion, pageURL: URL, notes: String) {
+        self.tag = tag
+        self.version = version
+        self.pageURL = pageURL
+        self.notes = notes
+    }
 }
 
 public enum UpdateError: Error, LocalizedError, Equatable {

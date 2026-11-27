@@ -24,6 +24,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var sessionWasActive = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // UI tests drive the app like a normal one: a regular app with a Dock presence, no menu bar tricks.
+        if UITestMode.isActive { NSApp.setActivationPolicy(.regular) }
         installMainMenu()
 
         let item = StatusItemFactory.make()
@@ -79,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
 
         // Global shortcuts work from any app, including while the interview window has focus.
-        for shortcut in Shortcut.allCases {
+        for shortcut in Shortcut.allCases where !UITestMode.isActive {
             if let hotKey = GlobalHotKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers, action: { [weak self] in
                 MainActor.assumeIsolated { self?.perform(shortcut) }
             }) {
@@ -92,12 +94,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         render(state: session.state, warnings: session.warnings)
 
         // First run: guide the user through setup.
-        if !setupModel.state.isReady { showSettings() }
+        if !setupModel.state.isReady || UITestMode.isActive { showSettings() }
+        if UITestMode.has("--ui-autostart") { session.start() }
 
         // A crowded menu bar (notched MacBooks) can hide the icon. Check, and fall back to the Dock.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        if !UITestMode.isActive { DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.verifyMenuBarIcon()
-        }
+        } }
     }
 
     /// Launching the app again (Finder, Dock, `open`) brings up the window, so it never feels like
@@ -316,7 +319,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             w.title = "Interview Helper"
             w.styleMask = [.titled, .closable]
             w.isReleasedWhenClosed = false
-            w.center()
+            if UITestMode.isActive, let screen = NSScreen.main {
+                w.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.minX + 20, y: screen.visibleFrame.maxY - 20))
+            } else {
+                w.center()
+            }
             window = w
         }
         NSApp.activate(ignoringOtherApps: true)

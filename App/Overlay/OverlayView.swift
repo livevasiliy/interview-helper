@@ -123,23 +123,24 @@ struct OverlayView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: labeled, vertical: false)
+                .accessibilityIdentifier("overlay-status")
             Spacer(minLength: 8)
             iconButton("bolt.fill", caption: labeled ? tr("answer") : nil,
-                       help: tr("Answer now (%@)", Shortcut.answerNow.symbols), action: onAnswerNow)
+                       id: "overlay-answer-now", help: tr("Answer now (%@)", Shortcut.answerNow.symbols), action: onAnswerNow)
                 .disabled(content.state != .running)
             iconButton("camera.viewfinder", caption: labeled ? tr("screen") : nil,
-                       help: tr("Analyze the screen (%@)", Shortcut.analyzeScreen.symbols), action: onAnalyzeScreen)
+                       id: "overlay-screen", help: tr("Analyze the screen (%@)", Shortcut.analyzeScreen.symbols), action: onAnalyzeScreen)
                 .disabled(content.state != .running)
             iconButton("text.bubble", caption: labeled ? tr("transcript") : nil,
-                       help: showTranscript ? tr("Hide transcript") : tr("Show transcript")) { showTranscript.toggle() }
+                       id: "overlay-transcript", help: showTranscript ? tr("Hide transcript") : tr("Show transcript")) { showTranscript.toggle() }
                 .opacity(showTranscript ? 1 : 0.6)
-            iconButton("doc.on.doc", caption: labeled ? tr("copy") : nil, help: tr("Copy answer"), action: onCopy)
+            iconButton("doc.on.doc", caption: labeled ? tr("copy") : nil, id: "overlay-copy", help: tr("Copy answer"), action: onCopy)
                 .disabled(content.answer.isEmpty)
-            iconButton("xmark", caption: nil, help: tr("Hide overlay (%@)", Shortcut.toggleOverlay.symbols), action: onHide)
+            iconButton("xmark", caption: nil, id: "overlay-hide", help: tr("Hide overlay (%@)", Shortcut.toggleOverlay.symbols), action: onHide)
         }
     }
 
-    private func iconButton(_ symbol: String, caption: String?, help: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(_ symbol: String, caption: String?, id: String = "", help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: symbol).font(.system(size: iconSize))
@@ -153,6 +154,7 @@ struct OverlayView: View {
         .foregroundStyle(.secondary)
         .help(help)
         .accessibilityLabel(help)
+        .accessibilityIdentifier(id)
     }
 
     private var statusColor: Color {
@@ -233,6 +235,7 @@ struct OverlayView: View {
             .font(smallFont)
             .foregroundStyle(color)
             .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("overlay-notice")
     }
 
     @ViewBuilder private var questionBlock: some View {
@@ -240,9 +243,11 @@ struct OverlayView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tr("Question")).font(labelFont).foregroundStyle(.secondary)
                 Text(question).font(questionFont).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("overlay-question")
             }
         } else if content.state == .running {
             Text(tr("Waiting for the first question…")).font(questionFont).foregroundStyle(.secondary)
+                .accessibilityIdentifier("overlay-waiting")
         }
     }
 
@@ -261,9 +266,11 @@ struct OverlayView: View {
                                     HStack(alignment: .firstTextBaseline, spacing: textSize * 0.4) {
                                         Text("•").foregroundStyle(.secondary)
                                         Text(Self.formatted(line.text)).fixedSize(horizontal: false, vertical: true)
+                                            .accessibilityIdentifier("overlay-answer-line")
                                     }
                                 } else {
                                     Text(Self.formatted(line.text)).fixedSize(horizontal: false, vertical: true)
+                                        .accessibilityIdentifier("overlay-answer-line")
                                 }
                             case .code(let language, let code):
                                 codeBlock(language: language, code: code)
@@ -276,17 +283,17 @@ struct OverlayView: View {
         }
     }
 
+    /// Code is wrapped, not scrolled: the overlay never takes the mouse, so a horizontal scroll bar
+    /// could not be used. Leading spaces keep the indentation readable.
     private func codeBlock(language: String, code: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             if !language.isEmpty {
                 Text(language).font(smallFont).foregroundStyle(.secondary)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                Text(code)
-                    .font(.system(size: textSize * 0.8, design: .monospaced))
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: true, vertical: true)
-            }
+            Text(code)
+                .font(.system(size: textSize * 0.8, design: .monospaced))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("overlay-code")
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)

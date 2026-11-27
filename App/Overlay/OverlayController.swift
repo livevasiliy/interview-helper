@@ -48,10 +48,13 @@ final class OverlayController {
         panel.acceptsMouseMovedEvents = true
 
         // Remembers the user's position and size; first launch goes to the top-right corner.
-        if !panel.setFrameUsingName("InterviewHelperOverlay.v2") {
-            positionTopRight()
+        if UITestMode.isActive {
+            // Tests must not inherit the developer's saved overlay frame, nor cover the Settings window.
+            panel.setFrame(NSRect(x: (NSScreen.main?.visibleFrame.maxX ?? 1_200) - 560, y: (NSScreen.main?.visibleFrame.minY ?? 0) + 20, width: 540, height: 480), display: false)
+        } else {
+            if !panel.setFrameUsingName("InterviewHelperOverlay.v2") { positionTopRight() }
+            panel.setFrameAutosaveName("InterviewHelperOverlay.v2")
         }
-        panel.setFrameAutosaveName("InterviewHelperOverlay.v2")
     }
 
     var isVisible: Bool { panel.isVisible }

@@ -43,9 +43,11 @@ private struct SetupChecklistView: View {
                 if model.state.isReady {
                     Label(tr("Everything is set up."), systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
+                        .accessibilityIdentifier("setup-ready")
                 } else {
                     Text(tr("Finish these steps before starting a session."))
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("setup-incomplete")
                 }
             }
 
@@ -71,6 +73,7 @@ private struct SetupChecklistView: View {
                 Picker(tr("Provider"), selection: $model.settings.answerProvider) {
                     ForEach(AnswerProvider.allCases) { Text($0.pickerTitle).tag($0) }
                 }
+                .accessibilityIdentifier("answer-provider")
                 let provider = model.settings.answerProvider
                 helpRow(provider.keyHelpText, url: provider.keyHelpURL)
                 if let secretKey = provider.secretKey {
@@ -84,6 +87,7 @@ private struct SetupChecklistView: View {
                 Picker(tr("Provider"), selection: $model.settings.transcriptionProvider) {
                     ForEach(TranscriptionProvider.allCases) { Text($0.pickerTitle).tag($0) }
                 }
+                .accessibilityIdentifier("stt-provider")
                 let stt = model.settings.transcriptionProvider
                 helpRow(stt.keyHelpText, url: stt.keyHelpURL)
                 keyRow(stt.displayName, key: stt.secretKey)
@@ -143,21 +147,46 @@ private struct SetupChecklistView: View {
                 Image(systemName: saved ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(saved ? .green : .secondary)
                 Text(saved ? tr("%@ API key saved", title) : tr("%@ API key", title))
+                    .accessibilityIdentifier("key-status-\(key.rawValue)")
                 Spacer()
-                if saved && !editing { Button(tr("Replace")) { model.replacing.insert(key) } }
-                if saved { Button(tr("Remove")) { model.removeKey(key) } }
+                if saved && !editing {
+                    Button(tr("Replace")) { model.replacing.insert(key) }
+                        .accessibilityIdentifier("key-replace-\(key.rawValue)")
+                }
+                if saved {
+                    Button(tr("Remove")) { model.removeKey(key) }
+                        .accessibilityIdentifier("key-remove-\(key.rawValue)")
+                }
             }
             if editing {
                 HStack {
-                    SecureField(tr("Paste API key"), text: draft)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { model.saveKey(key) }
+                    PasteableSecureField(placeholder: tr("Paste API key"), text: draft,
+                                         onSubmit: { model.saveKey(key) }, identifier: "key-field-\(key.rawValue)")
+                        .frame(height: 22)
+                    Button(tr("Paste")) { model.pasteKey(key) }
+                        .accessibilityIdentifier("key-paste-\(key.rawValue)")
+                    if model.validating.contains(key) {
+                        ProgressView().controlSize(.small)
+                    }
                     Button(tr("Save")) { model.saveKey(key) }
-                        .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty || model.validating.contains(key))
+                        .accessibilityIdentifier("key-save-\(key.rawValue)")
                     if saved {
                         Button(tr("Cancel")) { model.replacing.remove(key); model.drafts[key] = "" }
+                            .accessibilityIdentifier("key-cancel-\(key.rawValue)")
                     }
                 }
+            }
+            if let error = model.keyErrors[key] {
+                Label(error, systemImage: "xmark.octagon.fill")
+                    .font(.footnote).foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("key-message-\(key.rawValue)")
+            } else if let note = model.keyNotes[key] {
+                Label(note, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote).foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("key-message-\(key.rawValue)")
             }
         }
         .padding(.vertical, 2)
@@ -195,6 +224,7 @@ private struct SettingsFormView: View {
                 Picker(tr("Interface language"), selection: $model.settings.uiLanguage) {
                     ForEach(UILanguage.allCases) { Text($0.displayName).tag($0) }
                 }
+                .accessibilityIdentifier("ui-language")
                 Picker(tr("Interview language"), selection: $model.settings.interviewLanguage) {
                     ForEach(InterviewLanguage.allCases) { Text($0.displayName).tag($0) }
                 }
@@ -232,9 +262,9 @@ private struct SettingsFormView: View {
 
             Section(tr("About you")) {
                 Text(tr("About you and your experience")).font(.footnote).foregroundStyle(.secondary)
-                NoteEditor(text: $model.settings.resume, placeholder: tr("Role, years of experience, stack, projects"), height: 96)
+                NoteEditor(text: $model.settings.resume, placeholder: tr("Role, years of experience, stack, projects"), height: 96, id: "about-you")
                 Text(tr("What the AI should help with")).font(.footnote).foregroundStyle(.secondary)
-                NoteEditor(text: $model.settings.roleContext, placeholder: tr("PHP and React.js interview"), height: 70)
+                NoteEditor(text: $model.settings.roleContext, placeholder: tr("PHP and React.js interview"), height: 70, id: "ai-help")
                 Text(tr("For example: PHP and React.js interview. Help me answer questions about PHP and React.js."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
@@ -264,9 +294,11 @@ private struct NoteEditor: View {
     @Binding var text: String
     let placeholder: String
     let height: CGFloat
+    let id: String
 
     var body: some View {
         TextEditor(text: $text)
+            .accessibilityIdentifier(id)
             .font(.body)
             .scrollContentBackground(.hidden)
             .padding(6)
@@ -295,14 +327,18 @@ private struct UpdatesSection: View {
         Section(tr("Updates")) {
             LabeledContent(tr("Version"), value: updates.currentVersion)
             Toggle(tr("Check for updates automatically"), isOn: $enabled)
+                .accessibilityIdentifier("updates-auto")
             HStack {
                 if !updates.status.isEmpty {
                     Text(updates.status).font(.footnote).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("updates-status")
                 }
                 Spacer()
                 Button(tr("Check now")) { updates.checkNow() }.disabled(updates.isChecking)
+                    .accessibilityIdentifier("updates-check")
                 if updates.available != nil {
                     Button(tr("Update")) { updates.installAvailable() }.buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("updates-install")
                 }
             }
             Text(tr("Once every few hours the app asks GitHub for the latest release. Nothing about you is sent, and updates are never installed without your confirmation."))
