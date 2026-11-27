@@ -27,6 +27,17 @@ Build gotchas:
 - Signing is manual with the local "Apple Development" certificate so macOS keeps the Microphone / Screen Recording grants across rebuilds. The team id comes from a gitignored `Local.xcconfig` (`DEVELOPMENT_TEAM = <id>`); a fresh checkout must create it (`cp Local.xcconfig.example Local.xcconfig`, then fill in the team id). Ad-hoc signing makes macOS forget permissions on every rebuild.
 - Live behaviour (permissions, audio capture, real providers, window/cursor behaviour) cannot be unit-tested; see "Verification" below.
 
+## Building an installable app
+
+```bash
+scripts/build-release.sh    # -> dist/InterviewHelper.app (universal, Release) and dist/InterviewHelper-<version>.dmg
+```
+
+- The version comes from `MARKETING_VERSION` in `project.yml`. The script regenerates the project, builds Release for arm64 + x86_64, verifies the signature, warns if the debugger entitlement `get-task-allow` leaks into the build (Release sets `CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO`) and makes a DMG with an Applications shortcut. `dist/` is gitignored.
+- It is signed with the **Apple Development** certificate: it runs on this Mac and on Macs registered to the team, but Gatekeeper rejects it elsewhere (not notarized). Sharing it with other people needs a Developer ID certificate and notarization.
+- The app icon is generated from code: `swift scripts/make-icon.swift App/Assets.xcassets/AppIcon.appiconset` (a dark rounded square with a green waveform). Edit the script and rerun to change it.
+- Do not run an installed copy and a `.build` copy at the same time: they share the bundle id and the second cannot register the global shortcuts.
+
 ## Architecture
 
 Two targets, one rule: **everything testable lives in `InterviewCore` (SwiftPM library, `Sources/InterviewCore`); `App/` is a thin AppKit/SwiftUI shell** around system APIs. Tests only cover Core, using hand-written fakes (`FakeAudioSource`, `ControlledTranscriber`, `ScriptedEngine`, `FakePermissionsService`, `InMemorySecretStore`, a stubbed `URLProtocol`, a fake WebSocket).
