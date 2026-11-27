@@ -26,13 +26,15 @@ main() {
   major=$(sw_vers -productVersion | cut -d. -f1)
   [ "$major" -ge 13 ] || { echo "Needs macOS 13 or newer (this is $(sw_vers -productVersion))." >&2; exit 1; }
 
-  local tmp mount=""
-  tmp=$(mktemp -d)
+  # Globals on purpose: the EXIT trap runs after main() has returned, when locals are gone.
+  TMP_DIR=$(mktemp -d)
+  MOUNT_DIR=""
   cleanup() {
-    if [ -n "$mount" ]; then hdiutil detach -quiet "$mount" >/dev/null 2>&1 || true; fi
-    rm -rf "$tmp"
+    if [ -n "${MOUNT_DIR:-}" ]; then hdiutil detach -quiet "$MOUNT_DIR" >/dev/null 2>&1 || true; fi
+    rm -rf "${TMP_DIR:-}"
   }
   trap cleanup EXIT
+  local tmp="$TMP_DIR"
 
   echo "==> Downloading Interview Helper ($version)"
   curl -fSL --progress-bar "$base/InterviewHelper.dmg" -o "$tmp/InterviewHelper.dmg"
@@ -43,8 +45,9 @@ main() {
     || { echo "Checksum mismatch: the download is corrupted or was tampered with. Nothing was installed." >&2; exit 1; }
 
   echo "==> Installing to /Applications"
-  mount="$tmp/mnt"
+  local mount="$tmp/mnt"
   mkdir -p "$mount"
+  MOUNT_DIR="$mount"
   hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mount" "$tmp/InterviewHelper.dmg" >/dev/null
   [ -d "$mount/InterviewHelper.app" ] || { echo "The disk image has no InterviewHelper.app." >&2; exit 1; }
 
@@ -54,7 +57,8 @@ main() {
   if [ ! -w "$dest" ]; then dest="$HOME/Applications"; mkdir -p "$dest"; fi
   rm -rf "$dest/InterviewHelper.app"
   ditto "$mount/InterviewHelper.app" "$dest/InterviewHelper.app"
-  xattr -dr com.apple.quarantine "$dest/InterviewHelper.app" 2>/dev/null || true
+  # curl sets no quarantine flag; clear it anyway in case a proxy or tool added one.
+  find "$dest/InterviewHelper.app" -exec xattr -d com.apple.quarantine {} \; >/dev/null 2>&1 || true
 
   echo "==> Installed: $dest/InterviewHelper.app"
   echo "    The app is not notarized by Apple; it was verified above against the release checksum."
