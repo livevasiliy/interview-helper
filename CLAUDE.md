@@ -84,7 +84,7 @@ Manual run list lives in `.10x/decisions/qa/interview-helper.md` (verified so fa
 
 ## Updates
 
-`UpdateChecker` (Core, tested) reads `api.github.com/repos/livevasiliy/interview-helper/releases/latest` and compares its tag with `CFBundleShortVersionString` (taken from `MARKETING_VERSION` in `project.yml`: bump it for every release, or the updater offers the same version forever). `UpdateService` (App) checks 30 s after launch and then at most every 6 h, announces a new version only in the menu and Settings, and installs on confirmation by running `scripts/install.sh` pinned to the release tag (so the tag must contain that script). Release assets must be named `InterviewHelper.dmg` and `InterviewHelper.dmg.sha256` (`scripts/build-release.sh` produces them). Only apps in `/Applications` or `~/Applications` are replaced; a dev build just opens the release page.
+`UpdateChecker` (Core, tested) reads `api.github.com/repos/livevasiliy/interview-helper/releases/latest` and compares its tag with `CFBundleShortVersionString` (taken from `MARKETING_VERSION` in `project.yml`: bump it for every release, or the updater offers the same version forever). `UpdateService` (App) checks 30 s after launch and then at most every 6 h, announces a new version only in the menu and Settings, and installs on confirmation by running `scripts/install.sh` pinned to the release tag (so the tag must contain that script). Every release also gets a section in `CHANGELOG.md`. Release assets must be named `InterviewHelper.dmg` and `InterviewHelper.dmg.sha256` (`scripts/build-release.sh` produces them). Only apps in `/Applications` or `~/Applications` are replaced; a dev build just opens the release page.
 
 ## Privacy and policy notes to preserve
 

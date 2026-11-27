@@ -20,6 +20,8 @@ curl -fsSL https://raw.githubusercontent.com/livevasiliy/interview-helper/main/s
 
 Раз в несколько часов приложение в фоне спрашивает у GitHub последний релиз (один анонимный запрос, ничего о вас не отправляется). Если вышла новая версия, в меню иконки появится пункт «Обновить до …». Ничего не ставится без вашего подтверждения; отключить проверку можно в Настройках → Обновления. Вручную обновиться можно той же командой установки.
 
+История версий: [CHANGELOG.md](CHANGELOG.md).
+
 ## Ключи
 
 - **Подсказки:** Google Gemini (бесплатный или платный ключ, [aistudio.google.com/apikey](https://aistudio.google.com/apikey)), Groq, OpenRouter, Ollama (локально), OpenAI, Anthropic.
