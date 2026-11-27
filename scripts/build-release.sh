@@ -44,6 +44,12 @@ rm -f "dist/InterviewHelper-$VERSION.dmg"
 hdiutil create -quiet -volname "Interview Helper" -srcfolder dist/dmgroot -ov -format UDZO "dist/InterviewHelper-$VERSION.dmg"
 rm -rf dist/dmgroot
 
+# Release assets have fixed names so ".../releases/latest/download/InterviewHelper.dmg" always works
+# (scripts/install.sh relies on it), plus a checksum the installer verifies.
+cp "dist/InterviewHelper-$VERSION.dmg" dist/InterviewHelper.dmg
+(cd dist && shasum -a 256 InterviewHelper.dmg > InterviewHelper.dmg.sha256)
+
 echo
 echo "Done:"
 du -sh dist/InterviewHelper.app "dist/InterviewHelper-$VERSION.dmg"
+echo "Release assets: dist/InterviewHelper.dmg, dist/InterviewHelper.dmg.sha256"
