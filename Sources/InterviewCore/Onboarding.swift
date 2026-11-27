@@ -35,7 +35,8 @@ public enum SetupStep: CaseIterable, Sendable {
     case screenRecording
     /// The key for the chosen answer provider (not needed for Ollama).
     case answerKey
-    case deepgramKey
+    /// The key for the chosen speech-to-text provider.
+    case transcriptionKey
 }
 
 /// What is still needed before a session can start.
@@ -45,33 +46,38 @@ public struct SetupState: Equatable, Sendable {
     public var answerProvider: AnswerProvider
     /// True when the chosen provider's key is saved, or when it needs none.
     public var hasAnswerKey: Bool
-    public var hasDeepgramKey: Bool
+    public var transcriptionProvider: TranscriptionProvider
+    public var hasTranscriptionKey: Bool
 
     public init(
         microphone: PermissionStatus,
         screenRecording: PermissionStatus,
         answerProvider: AnswerProvider = AppSettings.defaultProvider,
+        transcriptionProvider: TranscriptionProvider = .deepgram,
         hasAnswerKey: Bool,
-        hasDeepgramKey: Bool
+        hasTranscriptionKey: Bool
     ) {
         self.microphone = microphone
         self.screenRecording = screenRecording
         self.answerProvider = answerProvider
         self.hasAnswerKey = hasAnswerKey
-        self.hasDeepgramKey = hasDeepgramKey
+        self.transcriptionProvider = transcriptionProvider
+        self.hasTranscriptionKey = hasTranscriptionKey
     }
 
     public static func current(
         permissions: PermissionsService,
         secrets: SecretStore,
-        provider: AnswerProvider = AppSettings.defaultProvider
+        provider: AnswerProvider = AppSettings.defaultProvider,
+        transcription: TranscriptionProvider = .deepgram
     ) -> SetupState {
         SetupState(
             microphone: permissions.microphoneStatus(),
             screenRecording: permissions.screenRecordingStatus(),
             answerProvider: provider,
+            transcriptionProvider: transcription,
             hasAnswerKey: provider.secretKey.map { secrets.has($0) } ?? true,
-            hasDeepgramKey: secrets.has(.deepgramAPIKey)
+            hasTranscriptionKey: secrets.has(transcription.secretKey)
         )
     }
 
@@ -80,7 +86,7 @@ public struct SetupState: Equatable, Sendable {
         case .microphone: return microphone == .granted
         case .screenRecording: return screenRecording == .granted
         case .answerKey: return hasAnswerKey
-        case .deepgramKey: return hasDeepgramKey
+        case .transcriptionKey: return hasTranscriptionKey
         }
     }
 

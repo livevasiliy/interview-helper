@@ -143,6 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let toggle = menu.addItem(withTitle: tr("Start Session    %@", Shortcut.startStop.symbols), action: #selector(toggleSession), keyEquivalent: "")
         toggle.target = self
         menu.addItem(withTitle: tr("Answer Now    %@", Shortcut.answerNow.symbols), action: #selector(answerNow), keyEquivalent: "").target = self
+        menu.addItem(withTitle: tr("Analyze Screen    %@", Shortcut.analyzeScreen.symbols), action: #selector(analyzeScreen), keyEquivalent: "").target = self
         menu.addItem(withTitle: tr("Show/Hide Overlay    %@", Shortcut.toggleOverlay.symbols), action: #selector(toggleOverlay), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: tr("Settings…"), action: #selector(showSettings), keyEquivalent: ",").target = self
@@ -236,6 +237,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch shortcut {
         case .startStop: session.toggle()
         case .answerNow: session.askNow()
+        case .analyzeScreen: session.analyzeScreen()
         case .toggleOverlay: overlay?.toggle()
         case .openSettings: showSettings()
         }
@@ -244,6 +246,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func toggleSession() { session.toggle() }
 
     @objc func answerNow() { session.askNow() }
+
+    @objc func analyzeScreen() { session.analyzeScreen() }
 
     @objc func toggleOverlay() { overlay?.toggle() }
 

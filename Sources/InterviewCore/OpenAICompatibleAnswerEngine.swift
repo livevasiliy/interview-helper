@@ -26,8 +26,15 @@ public struct OpenAICompatibleAnswerEngine: AnswerEngine, @unchecked Sendable {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "authorization")
         }
 
-        var messages: [[String: String]] = [["role": "system", "content": prompt.system]]
+        var messages: [[String: Any]] = [["role": "system", "content": prompt.system]]
         messages += prompt.messages.map { ["role": $0.role.rawValue, "content": $0.content] }
+        if let image = prompt.imageJPEG, let last = messages.indices.last, messages[last]["role"] as? String == "user" {
+            let text = messages[last]["content"] as? String ?? ""
+            messages[last]["content"] = [
+                ["type": "text", "text": text],
+                ["type": "image_url", "image_url": ["url": "data:image/jpeg;base64," + image.base64EncodedString()]],
+            ] as [[String: Any]]
+        }
         let body: [String: Any] = [
             "model": model,
             "stream": true,

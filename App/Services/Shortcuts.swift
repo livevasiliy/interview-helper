@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 enum Shortcut: CaseIterable {
     case startStop
     case answerNow
+    case analyzeScreen
     case toggleOverlay
     case openSettings
 
@@ -12,6 +13,7 @@ enum Shortcut: CaseIterable {
         switch self {
         case .startStop: return "⌃⌥Space"
         case .answerNow: return "⌃⌥↩"
+        case .analyzeScreen: return "⌃⌥S"
         case .toggleOverlay: return "⌃⌥O"
         case .openSettings: return "⌃⌥,"
         }
@@ -22,6 +24,7 @@ enum Shortcut: CaseIterable {
         switch self {
         case .startStop: return tr("Start / stop session")
         case .answerNow: return tr("Answer now: send what was just heard")
+        case .analyzeScreen: return tr("Analyze the screen: solve the task you see")
         case .toggleOverlay: return tr("Show / hide overlay")
         case .openSettings: return tr("Open settings (⌘, also works while this app is active)")
         }
@@ -32,6 +35,7 @@ enum Shortcut: CaseIterable {
         switch self {
         case .startStop: return tr("start / stop")
         case .answerNow: return tr("answer now")
+        case .analyzeScreen: return tr("screen")
         case .toggleOverlay: return tr("hide")
         case .openSettings: return tr("settings")
         }
@@ -41,6 +45,7 @@ enum Shortcut: CaseIterable {
         switch self {
         case .startStop: return kVK_Space
         case .answerNow: return kVK_Return
+        case .analyzeScreen: return kVK_ANSI_S
         case .toggleOverlay: return kVK_ANSI_O
         case .openSettings: return kVK_ANSI_Comma
         }

@@ -72,28 +72,21 @@ private struct SetupChecklistView: View {
                     ForEach(AnswerProvider.allCases) { Text($0.pickerTitle).tag($0) }
                 }
                 let provider = model.settings.answerProvider
-                HStack(alignment: .firstTextBaseline) {
-                    Text(provider.keyHelpText)
-                        .font(.footnote).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 8)
-                    if let url = provider.keyHelpURL { Link(tr("Open page"), destination: url).font(.footnote) }
-                }
+                helpRow(provider.keyHelpText, url: provider.keyHelpURL)
                 if let secretKey = provider.secretKey {
-                    keyRow(provider.displayName, key: secretKey, draft: $model.answerKeyDraft, done: model.state.hasAnswerKey)
+                    keyRow(provider.displayName, key: secretKey)
                 } else {
                     Label(tr("No key needed"), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                 }
             }
 
             Section(tr("Speech recognition (keys are stored in your Keychain)")) {
-                keyRow("Deepgram", key: .deepgramAPIKey, draft: $model.deepgramDraft, done: model.state.hasDeepgramKey)
-                HStack(alignment: .firstTextBaseline) {
-                    Text(tr("Deepgram gives $200 of free credit at sign-up, no card needed."))
-                        .font(.footnote).foregroundStyle(.secondary)
-                    Spacer(minLength: 8)
-                    Link(tr("Sign up"), destination: URL(string: "https://console.deepgram.com/signup")!).font(.footnote)
+                Picker(tr("Provider"), selection: $model.settings.transcriptionProvider) {
+                    ForEach(TranscriptionProvider.allCases) { Text($0.pickerTitle).tag($0) }
                 }
+                let stt = model.settings.transcriptionProvider
+                helpRow(stt.keyHelpText, url: stt.keyHelpURL)
+                keyRow(stt.displayName, key: stt.secretKey)
                 if let error = model.errorMessage {
                     Text(error).font(.footnote).foregroundStyle(.red)
                 }
@@ -129,21 +122,42 @@ private struct SetupChecklistView: View {
         }
     }
 
-    private func keyRow(_ title: String, key: SecretKey, draft: Binding<String>, done: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private func helpRow(_ text: String, url: URL?) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(text)
+                .font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            if let url { Link(tr("Open page"), destination: url).font(.footnote) }
+        }
+    }
+
+    /// A saved key collapses to one line (Replace / Remove); the input field only appears when there is
+    /// no key yet or the user chose to replace it.
+    private func keyRow(_ title: String, key: SecretKey) -> some View {
+        let saved = model.hasKey(key)
+        let editing = !saved || model.replacing.contains(key)
+        let draft = model.draft(key)
+        return VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(done ? .green : .secondary)
-                Text(tr("%@ API key", title))
+                Image(systemName: saved ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(saved ? .green : .secondary)
+                Text(saved ? tr("%@ API key saved", title) : tr("%@ API key", title))
                 Spacer()
-                if done { Button(tr("Remove")) { model.removeKey(key) } }
+                if saved && !editing { Button(tr("Replace")) { model.replacing.insert(key) } }
+                if saved { Button(tr("Remove")) { model.removeKey(key) } }
             }
-            HStack {
-                SecureField(done ? tr("Saved. Paste a new key to replace it") : tr("Paste API key"), text: draft)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit { model.saveKey(key) }
-                Button(tr("Save")) { model.saveKey(key) }
-                    .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
+            if editing {
+                HStack {
+                    SecureField(tr("Paste API key"), text: draft)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { model.saveKey(key) }
+                    Button(tr("Save")) { model.saveKey(key) }
+                        .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
+                    if saved {
+                        Button(tr("Cancel")) { model.replacing.remove(key); model.drafts[key] = "" }
+                    }
+                }
             }
         }
         .padding(.vertical, 2)
@@ -161,6 +175,20 @@ private struct SettingsFormView: View {
         )
     }
 
+    private func visionBinding(_ provider: AnswerProvider) -> Binding<String> {
+        Binding(
+            get: { model.settings.visionModels[provider.rawValue] ?? "" },
+            set: { model.settings.setVisionModelName($0, for: provider) }
+        )
+    }
+
+    private func sttBinding(_ provider: TranscriptionProvider) -> Binding<String> {
+        Binding(
+            get: { model.settings.transcriptionModels[provider.rawValue] ?? "" },
+            set: { model.settings.setTranscriptionModelName($0, for: provider) }
+        )
+    }
+
     var body: some View {
         Form {
             Section(tr("Language")) {
@@ -171,16 +199,19 @@ private struct SettingsFormView: View {
                     ForEach(InterviewLanguage.allCases) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                Text(tr("Sets speech recognition and the language of the suggested answers. Applies the next time you start a session. Auto-detect copes with mixed languages but uses more of your Deepgram credit."))
+                Text(tr("Sets speech recognition and the language of the suggested answers. Applies the next time you start a session. Auto-detect copes with mixed languages but costs more with some providers (Deepgram uses more of your credit)."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
-            Section(tr("Answers")) {
+            Section(tr("Models")) {
                 let provider = model.settings.answerProvider
-                LabeledContent(tr("Provider"), value: provider.pickerTitle)
+                LabeledContent(tr("Answers"), value: provider.pickerTitle)
                 TextField(tr("Model"), text: modelBinding(provider), prompt: Text(provider.defaultModel))
-                Text(tr("Leave empty to use %@. Change the provider on the Setup tab.", provider.defaultModel))
+                TextField(tr("Screenshot model"), text: visionBinding(provider), prompt: Text(model.settings.visionModelName(for: provider)))
+                Text(tr("Leave empty to use the suggested model. A paid key works the same way: just save it on the Setup tab and, if you like, type a stronger model here. Change the provider on the Setup tab."))
                     .font(.footnote).foregroundStyle(.secondary)
+                let stt = model.settings.transcriptionProvider
+                TextField(tr("Speech model (%@)", stt.displayName), text: sttBinding(stt), prompt: Text(stt.defaultModel))
             }
 
             Section(tr("Microphone")) {
@@ -199,13 +230,13 @@ private struct SettingsFormView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
-            Section(tr("Your background")) {
-                Text(tr("Role / company")).font(.footnote).foregroundStyle(.secondary)
-                TextEditor(text: $model.settings.roleContext)
-                    .frame(height: 60)
-                Text(tr("Resume")).font(.footnote).foregroundStyle(.secondary)
-                TextEditor(text: $model.settings.resume)
-                    .frame(minHeight: 100)
+            Section(tr("About you")) {
+                Text(tr("About you and your experience")).font(.footnote).foregroundStyle(.secondary)
+                NoteEditor(text: $model.settings.resume, placeholder: tr("Role, years of experience, stack, projects"), height: 96)
+                Text(tr("What the AI should help with")).font(.footnote).foregroundStyle(.secondary)
+                NoteEditor(text: $model.settings.roleContext, placeholder: tr("PHP and React.js interview"), height: 70)
+                Text(tr("For example: PHP and React.js interview. Help me answer questions about PHP and React.js."))
+                    .font(.footnote).foregroundStyle(.secondary)
             }
 
             Section(tr("Overlay")) {
@@ -222,5 +253,33 @@ private struct SettingsFormView: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+
+/// A multi-line text field that looks like part of the form: rounded, padded, with a placeholder.
+private struct NoteEditor: View {
+    @Binding var text: String
+    let placeholder: String
+    let height: CGFloat
+
+    var body: some View {
+        TextEditor(text: $text)
+            .font(.body)
+            .scrollContentBackground(.hidden)
+            .padding(6)
+            .frame(height: height)
+            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
+            .overlay(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text(placeholder)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 6)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
     }
 }

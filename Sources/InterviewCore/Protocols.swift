@@ -19,10 +19,13 @@ public struct PromptMessage: Sendable, Equatable {
 public struct AnswerPrompt: Sendable, Equatable {
     public let system: String
     public let messages: [PromptMessage]
+    /// A screenshot (JPEG) attached to the last user message, for engines that read images.
+    public let imageJPEG: Data?
 
-    public init(system: String, messages: [PromptMessage]) {
+    public init(system: String, messages: [PromptMessage], imageJPEG: Data? = nil) {
         self.system = system
         self.messages = messages
+        self.imageJPEG = imageJPEG
     }
 }
 

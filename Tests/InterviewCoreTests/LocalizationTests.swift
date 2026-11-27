@@ -41,7 +41,7 @@ final class LocalizationTests: XCTestCase {
         L10n.language = .russian
         XCTAssertEqual(ProviderError.unauthorized.errorDescription, "Ключ API отклонён. Проверьте его в настройках.")
         XCTAssertEqual(AnswerProvider.ollama.costNote, "бесплатно, офлайн")
-        XCTAssertEqual(AnswerProvider.gemini.pickerTitle, "Google Gemini · бесплатный тариф")
+        XCTAssertEqual(AnswerProvider.gemini.pickerTitle, "Google Gemini · бесплатный или платный ключ")
         XCTAssertEqual(InterviewLanguage.auto.displayName, "Авто")
         XCTAssertEqual(InterviewLanguage.russian.displayName, "Русский", "a language is named in itself")
         L10n.language = .english

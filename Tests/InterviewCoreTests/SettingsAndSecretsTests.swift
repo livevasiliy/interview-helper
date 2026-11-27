@@ -81,7 +81,7 @@ final class AppSettingsTests: XCTestCase {
 final class SetupStateTests: XCTestCase {
     func testNothingDoneListsAllStepsInOrder() {
         let state = SetupState.current(permissions: FakePermissionsService(), secrets: InMemorySecretStore())
-        XCTAssertEqual(state.missing, [.microphone, .screenRecording, .answerKey, .deepgramKey])
+        XCTAssertEqual(state.missing, [.microphone, .screenRecording, .answerKey, .transcriptionKey])
         XCTAssertEqual(state.nextStep, .microphone)
         XCTAssertFalse(state.isReady)
     }
@@ -99,7 +99,7 @@ final class SetupStateTests: XCTestCase {
     }
 
     func testDeniedMicrophoneStillCountsAsMissing() {
-        let state = SetupState(microphone: .denied, screenRecording: .granted, hasAnswerKey: true, hasDeepgramKey: true)
+        let state = SetupState(microphone: .denied, screenRecording: .granted, hasAnswerKey: true, hasTranscriptionKey: true)
         XCTAssertEqual(state.missing, [.microphone])
     }
 }

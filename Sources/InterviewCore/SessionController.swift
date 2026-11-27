@@ -36,6 +36,8 @@ public actor SessionController {
     private let microphone: AudioSource?
     private let transcriber: Transcriber
     private let answerEngine: AnswerEngine
+    /// Reads screenshots; falls back to `answerEngine` when the provider's usual model can see images.
+    private let visionEngine: AnswerEngine?
     private let promptBuilder: PromptBuilder
     private let detectorTemplate: QuestionDetector
     private let flushInterval: TimeInterval
@@ -63,6 +65,7 @@ public actor SessionController {
         microphone: AudioSource?,
         transcriber: Transcriber,
         answerEngine: AnswerEngine,
+        visionEngine: AnswerEngine? = nil,
         promptBuilder: PromptBuilder,
         detector: QuestionDetector = QuestionDetector(),
         flushInterval: TimeInterval = 0.2,
@@ -74,6 +77,7 @@ public actor SessionController {
         self.microphone = microphone
         self.transcriber = transcriber
         self.answerEngine = answerEngine
+        self.visionEngine = visionEngine
         self.promptBuilder = promptBuilder
         self.detectorTemplate = detector
         self.detector = detector
@@ -240,14 +244,23 @@ public actor SessionController {
         }
     }
 
+    /// Answers what a screenshot shows (a coding task, an error, a quiz). The JPEG comes from the app.
+    public func answerScreen(jpeg: Data) {
+        guard state == .running else { return }
+        let prompt = promptBuilder.buildScreen(history: turns, imageJPEG: jpeg)
+        answer(label: L10n.tr("Screenshot of your screen"), prompt: prompt, engine: visionEngine ?? answerEngine)
+    }
+
     private func ask(_ question: DetectedQuestion) {
+        let prompt = promptBuilder.build(question: question.text, history: historyForPrompt())
+        answer(label: question.text, prompt: prompt, engine: answerEngine)
+    }
+
+    private func answer(label: String, prompt: AnswerPrompt, engine: AnswerEngine) {
         answerTask?.cancel()
         currentQuestionID += 1
         let id = currentQuestionID
-        eventContinuation.yield(.question(id: id, text: question.text))
-
-        let prompt = promptBuilder.build(question: question.text, history: historyForPrompt())
-        let engine = answerEngine
+        eventContinuation.yield(.question(id: id, text: label))
         answerTask = Task { [weak self] in
             do {
                 for try await token in engine.answer(for: prompt) {

@@ -66,3 +66,19 @@ public extension PCMChunk {
         return Float(peak) / Float(Int16.max)
     }
 }
+
+public extension PCMChunk {
+    /// Root-mean-square level, 0...1. A steadier "is someone talking" signal than the peak.
+    var rmsLevel: Float {
+        let count = frameCount
+        guard count > 0 else { return 0 }
+        var sum: Double = 0
+        data.withUnsafeBytes { raw in
+            for sample in raw.bindMemory(to: Int16.self) {
+                let v = Double(sample) / Double(Int16.max)
+                sum += v * v
+            }
+        }
+        return Float((sum / Double(count)).squareRoot())
+    }
+}

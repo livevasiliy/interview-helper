@@ -15,7 +15,7 @@ final class PromptBuilderTests: XCTestCase {
     func testOmitsEmptySections() {
         let p = PromptBuilder().build(question: "Hi?", history: [])
         XCTAssertFalse(p.system.contains("resume"))
-        XCTAssertFalse(p.system.contains("Role / company"))
+        XCTAssertFalse(p.system.contains("What the candidate wants help with"))
     }
 
     func testHistoryIsLimitedToMostRecentTurns() {

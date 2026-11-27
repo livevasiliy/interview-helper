@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Foundation
 import InterviewCore
 
@@ -21,17 +22,19 @@ final class SetupViewModel: ObservableObject {
             if oldValue.uiLanguage != settings.uiLanguage {
                 L10n.language = settings.uiLanguage.resolved()
             }
-            if oldValue.answerProvider != settings.answerProvider {
-                answerKeyDraft = ""
-                refresh()   // the required key depends on the provider
+            if oldValue.answerProvider != settings.answerProvider
+                || oldValue.transcriptionProvider != settings.transcriptionProvider {
+                refresh()   // the required keys depend on the providers
             }
         }
     }
     @Published private(set) var state: SetupState
     @Published private(set) var inputDevices: [AudioInputDevice] = AudioInputDevices.all()
     @Published private(set) var defaultInputName: String? = AudioInputDevices.defaultInputName()
-    @Published var answerKeyDraft = ""
-    @Published var deepgramDraft = ""
+    /// Text typed into a key field, per Keychain slot (providers can share a slot).
+    @Published var drafts: [SecretKey: String] = [:]
+    /// Slots whose saved key is being replaced: only then is the input field shown for a saved key.
+    @Published var replacing: Set<SecretKey> = []
     @Published var errorMessage: String?
     /// Shown at the top of the Setup tab when the user tried to start a session too early.
     @Published private(set) var notice: String?
@@ -52,7 +55,7 @@ final class SetupViewModel: ObservableObject {
         let loaded = settingsStore.load()
         L10n.language = loaded.uiLanguage.resolved()   // before any view or menu reads a string
         self.settings = loaded
-        self.state = SetupState.current(permissions: permissions, secrets: secrets, provider: loaded.answerProvider)
+        self.state = SetupState.current(permissions: permissions, secrets: secrets, provider: loaded.answerProvider, transcription: loaded.transcriptionProvider)
 
         // The user returns from System Settings by re-activating the app.
         activationObserver = NotificationCenter.default.addObserver(
@@ -69,7 +72,7 @@ final class SetupViewModel: ObservableObject {
     func refresh() {
         inputDevices = AudioInputDevices.all()
         defaultInputName = AudioInputDevices.defaultInputName()
-        state = SetupState.current(permissions: permissions, secrets: secrets, provider: settings.answerProvider)
+        state = SetupState.current(permissions: permissions, secrets: secrets, provider: settings.answerProvider, transcription: settings.transcriptionProvider)
         if state.isReady { notice = nil }
     }
 
@@ -82,7 +85,7 @@ final class SetupViewModel: ObservableObject {
             case .microphone: return tr("Microphone permission")
             case .screenRecording: return tr("Screen Recording permission")
             case .answerKey: return tr("API key for %@", settings.answerProvider.displayName)
-            case .deepgramKey: return tr("API key for %@", "Deepgram")
+            case .transcriptionKey: return tr("API key for %@", settings.transcriptionProvider.displayName)
             }
         }
         notice = names.isEmpty
@@ -109,12 +112,18 @@ final class SetupViewModel: ObservableObject {
         if !state.isDone(.screenRecording) { SystemSettingsPane.screenRecording.open() }
     }
 
+    func draft(_ key: SecretKey) -> Binding<String> {
+        Binding(get: { self.drafts[key] ?? "" }, set: { self.drafts[key] = $0 })
+    }
+
+    func hasKey(_ key: SecretKey) -> Bool { (try? secrets.get(key)) ?? nil != nil }
+
     func saveKey(_ key: SecretKey) {
-        let draft = key == .deepgramAPIKey ? deepgramDraft : answerKeyDraft
         do {
-            try secrets.set(draft, for: key)
+            try secrets.set(drafts[key] ?? "", for: key)
             errorMessage = nil
-            if key == .deepgramAPIKey { deepgramDraft = "" } else { answerKeyDraft = "" }
+            drafts[key] = ""
+            replacing.remove(key)
         } catch {
             errorMessage = "\(error)"
         }
@@ -125,6 +134,7 @@ final class SetupViewModel: ObservableObject {
         do {
             try secrets.set(nil, for: key)
             errorMessage = nil
+            replacing.remove(key)
         } catch {
             errorMessage = "\(error)"
         }

@@ -31,6 +31,7 @@ final class SessionCoordinator: ObservableObject {
     private var eventTask: Task<Void, Never>?
     private var resumeAfterWake = false
     private var observers: [NSObjectProtocol] = []
+    private var isCapturingScreen = false
 
     private let maxLines = 60
     private let maxWarnings = 5
@@ -75,9 +76,10 @@ final class SessionCoordinator: ObservableObject {
 
         let settings = settingsStore.load()
         let provider = settings.answerProvider
-        let setup = SetupState.current(permissions: permissions, secrets: secrets, provider: provider)
+        let stt = settings.transcriptionProvider
+        let setup = SetupState.current(permissions: permissions, secrets: secrets, provider: provider, transcription: stt)
         guard setup.isReady,
-              let deepgramKey = (try? secrets.get(.deepgramAPIKey)) ?? nil
+              let sttKey = (try? secrets.get(stt.secretKey)) ?? nil
         else {
             onNeedsSetup?(setup.missing)
             return
@@ -90,10 +92,13 @@ final class SessionCoordinator: ObservableObject {
         let controller = SessionController(
             systemAudio: system,
             microphone: microphone,
-            transcriber: DeepgramTranscriber(configuration: DeepgramConfiguration(
-                apiKey: deepgramKey, language: settings.interviewLanguage.deepgramCode
-            )),
+            transcriber: stt.makeTranscriber(
+                apiKey: sttKey, model: settings.transcriptionModelName(for: stt), language: settings.interviewLanguage
+            ),
             answerEngine: AnswerEngineFactory.make(provider: provider, apiKey: answerKey, model: settings.modelName(for: provider)),
+            visionEngine: AnswerEngineFactory.make(
+                provider: provider, apiKey: answerKey, model: settings.visionModelName(for: provider), vision: true
+            ),
             promptBuilder: settings.promptBuilder,
             answerFromMicrophone: settings.answerMicrophoneQuestions
         )
@@ -121,6 +126,30 @@ final class SessionCoordinator: ObservableObject {
     func askNow() {
         guard state == .running, let controller else { return }
         Task { await controller.askNow() }
+    }
+
+    /// Takes a screenshot and answers what it shows (a coding task, an error, a quiz).
+    func analyzeScreen() {
+        guard state == .running, let controller else {
+            addWarning(tr("Start a session first (%@), then analyze the screen.", Shortcut.startStop.symbols))
+            return
+        }
+        guard !isCapturingScreen else { return }
+        isCapturingScreen = true
+        question = tr("Screenshot of your screen")
+        answer = ""
+        answerError = nil
+        isAnswering = true
+        Task { [weak self] in
+            defer { self?.isCapturingScreen = false }
+            do {
+                let jpeg = try await ScreenshotCapture.captureJPEG()
+                await controller.answerScreen(jpeg: jpeg)
+            } catch {
+                self?.answerError = error.localizedDescription
+                self?.isAnswering = false
+            }
+        }
     }
 
     func stop() {
@@ -158,9 +187,13 @@ final class SessionCoordinator: ObservableObject {
             answerError = message
             isAnswering = false
         case .warning(let message):
-            warnings.append(message)
-            if warnings.count > maxWarnings { warnings.removeFirst(warnings.count - maxWarnings) }
+            addWarning(message)
         }
+    }
+
+    private func addWarning(_ message: String) {
+        warnings.append(message)
+        if warnings.count > maxWarnings { warnings.removeFirst(warnings.count - maxWarnings) }
     }
 
     /// An interim line for a speaker is replaced in place until its final version arrives.

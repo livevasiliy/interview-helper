@@ -7,6 +7,7 @@ public enum SecretKey: String, CaseIterable, Sendable {
     case geminiAPIKey
     case groqAPIKey
     case openRouterAPIKey
+    case openAIAPIKey
 }
 
 /// Stores API keys. Production implementation is the Keychain (ADR-002).

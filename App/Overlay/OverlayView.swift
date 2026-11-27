@@ -36,6 +36,7 @@ struct LiveOverlayView: View {
                 NSPasteboard.general.setString(session.answer, forType: .string)
             },
             onAnswerNow: { session.askNow() },
+            onAnalyzeScreen: { session.analyzeScreen() },
             onHide: onHide
         )
     }
@@ -48,6 +49,7 @@ struct OverlayView: View {
     @State private var showTranscript: Bool
     var onCopy: () -> Void
     var onAnswerNow: () -> Void
+    var onAnalyzeScreen: () -> Void
     var onHide: () -> Void
 
     init(
@@ -56,6 +58,7 @@ struct OverlayView: View {
         showTranscript: Bool = false,
         onCopy: @escaping () -> Void = {},
         onAnswerNow: @escaping () -> Void = {},
+        onAnalyzeScreen: @escaping () -> Void = {},
         onHide: @escaping () -> Void = {}
     ) {
         self.content = content
@@ -63,6 +66,7 @@ struct OverlayView: View {
         _showTranscript = State(initialValue: showTranscript)
         self.onCopy = onCopy
         self.onAnswerNow = onAnswerNow
+        self.onAnalyzeScreen = onAnalyzeScreen
         self.onHide = onHide
     }
 
@@ -100,13 +104,15 @@ struct OverlayView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Circle().fill(statusColor).frame(width: 9, height: 9)
+            Circle().fill(statusColor).frame(width: 9, height: 9).accessibilityHidden(true)
             Text(statusText)
                 .font(headerFont)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             Spacer(minLength: 8)
             iconButton("bolt.fill", help: tr("Answer now (%@)", Shortcut.answerNow.symbols), action: onAnswerNow)
+                .disabled(content.state != .running)
+            iconButton("camera.viewfinder", help: tr("Analyze the screen (%@)", Shortcut.analyzeScreen.symbols), action: onAnalyzeScreen)
                 .disabled(content.state != .running)
             iconButton("text.bubble", help: showTranscript ? tr("Hide transcript") : tr("Show transcript")) { showTranscript.toggle() }
                 .opacity(showTranscript ? 1 : 0.6)
@@ -120,12 +126,13 @@ struct OverlayView: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: iconSize))
-                .frame(width: iconSize + 10, height: iconSize + 10)
+                .frame(width: max(28, iconSize + 12), height: max(28, iconSize + 12))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
         .help(help)
+        .accessibilityLabel(help)
     }
 
     private var statusColor: Color {
@@ -210,14 +217,19 @@ struct OverlayView: View {
                     Text(content.isAnswering ? tr("Thinking…") : "—").font(answerFont).foregroundStyle(.secondary)
                 } else {
                     VStack(alignment: .leading, spacing: textSize * 0.3) {
-                        ForEach(Array(Self.answerLines(content.answer).enumerated()), id: \.offset) { _, line in
-                            if line.isBullet {
-                                HStack(alignment: .firstTextBaseline, spacing: textSize * 0.4) {
-                                    Text("•").foregroundStyle(.secondary)
+                        ForEach(Array(Self.answerBlocks(content.answer).enumerated()), id: \.offset) { _, block in
+                            switch block {
+                            case .text(let line):
+                                if line.isBullet {
+                                    HStack(alignment: .firstTextBaseline, spacing: textSize * 0.4) {
+                                        Text("•").foregroundStyle(.secondary)
+                                        Text(Self.formatted(line.text)).fixedSize(horizontal: false, vertical: true)
+                                    }
+                                } else {
                                     Text(Self.formatted(line.text)).fixedSize(horizontal: false, vertical: true)
                                 }
-                            } else {
-                                Text(Self.formatted(line.text)).fixedSize(horizontal: false, vertical: true)
+                            case .code(let language, let code):
+                                codeBlock(language: language, code: code)
                             }
                         }
                     }
@@ -225,6 +237,23 @@ struct OverlayView: View {
                 }
             }
         }
+    }
+
+    private func codeBlock(language: String, code: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if !language.isEmpty {
+                Text(language).font(smallFont).foregroundStyle(.secondary)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                Text(code)
+                    .font(.system(size: textSize * 0.8, design: .monospaced))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: true)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.09), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var transcriptBlock: some View {
@@ -240,6 +269,43 @@ struct OverlayView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    enum AnswerBlock: Equatable {
+        case text(AnswerLine)
+        /// A fenced code block; one that is still streaming (no closing fence yet) is included as it stands.
+        case code(language: String, code: String)
+    }
+
+    /// Splits the answer into text lines and fenced code blocks (indentation inside code is kept).
+    static func answerBlocks(_ answer: String) -> [AnswerBlock] {
+        var blocks: [AnswerBlock] = []
+        var prose: [String] = []
+        var code: [String] = []
+        var language = ""
+        var inCode = false
+        func flushProse() {
+            blocks += answerLines(prose.joined(separator: "\n")).map(AnswerBlock.text)
+            prose = []
+        }
+        for raw in answer.components(separatedBy: "\n") {
+            if raw.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+                if inCode {
+                    blocks.append(.code(language: language, code: code.joined(separator: "\n")))
+                    code = []
+                } else {
+                    flushProse()
+                    language = raw.trimmingCharacters(in: .whitespaces).dropFirst(3).trimmingCharacters(in: .whitespaces)
+                }
+                inCode.toggle()
+            } else if inCode {
+                code.append(raw)
+            } else {
+                prose.append(raw)
+            }
+        }
+        if inCode { blocks.append(.code(language: language, code: code.joined(separator: "\n"))) } else { flushProse() }
+        return blocks
     }
 
     struct AnswerLine: Equatable {

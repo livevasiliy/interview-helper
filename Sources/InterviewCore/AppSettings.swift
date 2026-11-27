@@ -25,6 +25,15 @@ public enum InterviewLanguage: String, Codable, CaseIterable, Sendable, Identifi
         }
     }
 
+    /// ISO 639-1 code for Whisper-style APIs; nil lets the model detect the language.
+    public var whisperCode: String? {
+        switch self {
+        case .auto: return nil
+        case .russian: return "ru"
+        case .english: return "en"
+        }
+    }
+
     /// Deepgram `language` parameter. `multi` auto-detects but costs more than a single language.
     public var deepgramCode: String {
         switch self {
@@ -51,12 +60,21 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var anthropicModel: String
     /// Model overrides for the other providers, keyed by `AnswerProvider.rawValue`.
     public var providerModels: [String: String]
+    /// Screenshot-model overrides, keyed by `AnswerProvider.rawValue`.
+    public var visionModels: [String: String]
+    /// Who turns speech into text.
+    public var transcriptionProvider: TranscriptionProvider
+    /// Transcription model overrides, keyed by `TranscriptionProvider.rawValue`.
+    public var transcriptionModels: [String: String]
     public var interviewLanguage: InterviewLanguage
     /// Language of the app's own windows and menus. Auto follows the system language.
     public var uiLanguage: UILanguage
     /// Exclude the overlay from screen sharing/recording. Off by default.
     public var hideOverlayFromCapture: Bool
+    /// "About you": experience and background (the field was a pasted resume in older versions).
     public var resume: String
+    /// "What the AI should help with": the interview's topic and the kind of help wanted
+    /// (stored under the old `roleContext` name).
     public var roleContext: String
     /// CoreAudio UID of the chosen microphone. Empty = follow the system default input.
     public var microphoneDeviceUID: String
@@ -74,6 +92,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         answerProvider: AnswerProvider = AppSettings.defaultProvider,
         anthropicModel: String = AppSettings.defaultModel,
         providerModels: [String: String] = [:],
+        visionModels: [String: String] = [:],
+        transcriptionProvider: TranscriptionProvider = .deepgram,
+        transcriptionModels: [String: String] = [:],
         interviewLanguage: InterviewLanguage = .auto,
         uiLanguage: UILanguage = .auto,
         hideOverlayFromCapture: Bool = false,
@@ -86,6 +107,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.answerProvider = answerProvider
         self.anthropicModel = anthropicModel
         self.providerModels = providerModels
+        self.visionModels = visionModels
+        self.transcriptionProvider = transcriptionProvider
+        self.transcriptionModels = transcriptionModels
         self.interviewLanguage = interviewLanguage
         self.uiLanguage = uiLanguage
         self.hideOverlayFromCapture = hideOverlayFromCapture
@@ -110,6 +134,28 @@ public struct AppSettings: Codable, Equatable, Sendable {
         return trimmed.isEmpty ? provider.defaultModel : trimmed
     }
 
+    /// The model that reads screenshots: the user's override, else the provider's vision model,
+    /// else the model used for text answers.
+    public func visionModelName(for provider: AnswerProvider) -> String {
+        let chosen = visionModels[provider.rawValue]?.trimmingCharacters(in: .whitespaces) ?? ""
+        if !chosen.isEmpty { return chosen }
+        return provider.visionModel ?? modelName(for: provider)
+    }
+
+    public mutating func setVisionModelName(_ name: String, for provider: AnswerProvider) {
+        visionModels[provider.rawValue] = name
+    }
+
+    /// The speech-to-text model: the user's override, else the provider's default.
+    public func transcriptionModelName(for provider: TranscriptionProvider) -> String {
+        let chosen = transcriptionModels[provider.rawValue]?.trimmingCharacters(in: .whitespaces) ?? ""
+        return chosen.isEmpty ? provider.defaultModel : chosen
+    }
+
+    public mutating func setTranscriptionModelName(_ name: String, for provider: TranscriptionProvider) {
+        transcriptionModels[provider.rawValue] = name
+    }
+
     public mutating func setModelName(_ name: String, for provider: AnswerProvider) {
         if provider == .anthropic {
             anthropicModel = name
@@ -121,7 +167,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
     // MARK: Codable (tolerant: settings saved by an older version still load)
 
     private enum CodingKeys: String, CodingKey {
-        case answerProvider, anthropicModel, providerModels, interviewLanguage, uiLanguage
+        case answerProvider, anthropicModel, providerModels, visionModels
+        case transcriptionProvider, transcriptionModels
+        case interviewLanguage, uiLanguage
         case language   // legacy free-text answer language, read only
         case hideOverlayFromCapture, resume, roleContext
         case microphoneDeviceUID, answerMicrophoneQuestions, overlayTextSize
@@ -133,6 +181,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         answerProvider = (try? c.decodeIfPresent(AnswerProvider.self, forKey: .answerProvider)) ?? d.answerProvider
         anthropicModel = try c.decodeIfPresent(String.self, forKey: .anthropicModel) ?? d.anthropicModel
         providerModels = try c.decodeIfPresent([String: String].self, forKey: .providerModels) ?? d.providerModels
+        visionModels = try c.decodeIfPresent([String: String].self, forKey: .visionModels) ?? d.visionModels
+        transcriptionProvider = (try? c.decodeIfPresent(TranscriptionProvider.self, forKey: .transcriptionProvider)) ?? d.transcriptionProvider
+        transcriptionModels = try c.decodeIfPresent([String: String].self, forKey: .transcriptionModels) ?? d.transcriptionModels
         if let language = try? c.decodeIfPresent(InterviewLanguage.self, forKey: .interviewLanguage) {
             interviewLanguage = language
         } else if let legacy = try? c.decodeIfPresent(String.self, forKey: .language) {
@@ -154,6 +205,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try c.encode(answerProvider, forKey: .answerProvider)
         try c.encode(anthropicModel, forKey: .anthropicModel)
         try c.encode(providerModels, forKey: .providerModels)
+        try c.encode(visionModels, forKey: .visionModels)
+        try c.encode(transcriptionProvider, forKey: .transcriptionProvider)
+        try c.encode(transcriptionModels, forKey: .transcriptionModels)
         try c.encode(interviewLanguage, forKey: .interviewLanguage)
         try c.encode(uiLanguage, forKey: .uiLanguage)
         try c.encode(hideOverlayFromCapture, forKey: .hideOverlayFromCapture)

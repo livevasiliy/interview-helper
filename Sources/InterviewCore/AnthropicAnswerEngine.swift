@@ -32,12 +32,20 @@ public struct AnthropicAnswerEngine: AnswerEngine, @unchecked Sendable {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue("text/event-stream", forHTTPHeaderField: "accept")
 
+        var messages: [[String: Any]] = prompt.messages.map { ["role": $0.role.rawValue, "content": $0.content] }
+        if let image = prompt.imageJPEG, let last = messages.indices.last, messages[last]["role"] as? String == "user" {
+            let text = messages[last]["content"] as? String ?? ""
+            messages[last]["content"] = [
+                ["type": "image", "source": ["type": "base64", "media_type": "image/jpeg", "data": image.base64EncodedString()]],
+                ["type": "text", "text": text],
+            ] as [[String: Any]]
+        }
         let body: [String: Any] = [
             "model": model,
             "max_tokens": maxTokens,
             "stream": true,
             "system": prompt.system,
-            "messages": prompt.messages.map { ["role": $0.role.rawValue, "content": $0.content] },
+            "messages": messages,
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
