@@ -45,7 +45,7 @@ public struct OpenAICompatibleAnswerEngine: AnswerEngine, @unchecked Sendable {
                     let request = try makeRequest(for: prompt)
                     let (bytes, response) = try await session.bytes(for: request)
                     guard let http = response as? HTTPURLResponse else {
-                        throw ProviderError.connectionFailed("No HTTP response")
+                        throw ProviderError.connectionFailed(L10n.tr("No HTTP response"))
                     }
                     guard http.statusCode == 200 else {
                         var body = Data()
@@ -68,7 +68,7 @@ public struct OpenAICompatibleAnswerEngine: AnswerEngine, @unchecked Sendable {
                     continuation.finish()
                 } catch let error as URLError where error.code == .cannotConnectToHost && baseURL.host == "localhost" {
                     continuation.finish(throwing: ProviderError.connectionFailed(
-                        "Ollama is not running. Start the Ollama app, then try again."
+                        L10n.tr("Ollama is not running. Start the Ollama app, then try again.")
                     ))
                 } catch {
                     if Task.isCancelled { continuation.finish() } else { continuation.finish(throwing: error) }

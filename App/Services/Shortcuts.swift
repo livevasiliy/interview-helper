@@ -20,20 +20,20 @@ enum Shortcut: CaseIterable {
     /// Full description for Settings and the menu.
     var title: String {
         switch self {
-        case .startStop: return "Start / stop session"
-        case .answerNow: return "Answer now: send what was just heard"
-        case .toggleOverlay: return "Show / hide overlay"
-        case .openSettings: return "Open settings (⌘, also works while this app is active)"
+        case .startStop: return tr("Start / stop session")
+        case .answerNow: return tr("Answer now: send what was just heard")
+        case .toggleOverlay: return tr("Show / hide overlay")
+        case .openSettings: return tr("Open settings (⌘, also works while this app is active)")
         }
     }
 
     /// Short label for the overlay's hint line.
     var shortTitle: String {
         switch self {
-        case .startStop: return "start / stop"
-        case .answerNow: return "answer now"
-        case .toggleOverlay: return "hide"
-        case .openSettings: return "settings"
+        case .startStop: return tr("start / stop")
+        case .answerNow: return tr("answer now")
+        case .toggleOverlay: return tr("hide")
+        case .openSettings: return tr("settings")
         }
     }
 

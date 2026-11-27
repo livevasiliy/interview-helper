@@ -17,4 +17,4 @@
 - T11 SessionController + hotkey + sleep/wake: DONE (unit-tested; no overlay yet, so output is not visible)
 - T12 Overlay: DONE (offscreen renders reviewed light/dark; live window behavior unverified; hide-from-capture is best effort)
 - T13 QA: IN PROGRESS — first full end-to-end success on a real Mac (see decisions/qa/interview-helper.md); latency and several manual checks remain; security/privacy self-review written to reviews/2026-11-27-security-review.md
-- Verification: `swift build` OK, `swift test` 126/126 pass; xcodebuild BUILD SUCCEEDED
+- Verification: `swift build` OK, `swift test` 135/135 pass; xcodebuild BUILD SUCCEEDED

@@ -13,11 +13,11 @@ public enum ProviderError: Error, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .unauthorized: return "The API key was rejected. Check it in Settings."
-        case .http(let status, let message): return "Request failed (HTTP \(status)): \(message)"
-        case .api(let message): return "Provider error: \(message)"
-        case .connectionFailed(let message): return "Connection failed: \(message)"
-        case .allModelsFailed(let details): return "No model could answer. \(details)"
+        case .unauthorized: return L10n.tr("The API key was rejected. Check it in Settings.")
+        case .http(let status, let message): return L10n.tr("Request failed (HTTP %ld): %@", status, message)
+        case .api(let message): return L10n.tr("Provider error: %@", message)
+        case .connectionFailed(let message): return L10n.tr("Connection failed: %@", message)
+        case .allModelsFailed(let details): return L10n.tr("No model could answer. %@", details)
         }
     }
 }

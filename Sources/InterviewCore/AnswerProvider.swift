@@ -16,18 +16,18 @@ public enum AnswerProvider: String, Codable, CaseIterable, Sendable, Identifiabl
         case .gemini: return "Google Gemini"
         case .groq: return "Groq"
         case .openRouter: return "OpenRouter"
-        case .ollama: return "Ollama (on this Mac)"
+        case .ollama: return L10n.tr("Ollama (on this Mac)")
         case .anthropic: return "Anthropic Claude"
         }
     }
 
     public var costNote: String {
         switch self {
-        case .gemini: return "free tier"
-        case .groq: return "free tier"
-        case .openRouter: return "free models"
-        case .ollama: return "free, offline"
-        case .anthropic: return "paid"
+        case .gemini: return L10n.tr("free tier")
+        case .groq: return L10n.tr("free tier")
+        case .openRouter: return L10n.tr("free models")
+        case .ollama: return L10n.tr("free, offline")
+        case .anthropic: return L10n.tr("paid")
         }
     }
 
@@ -98,11 +98,11 @@ public enum AnswerProvider: String, Codable, CaseIterable, Sendable, Identifiabl
 
     public var keyHelpText: String {
         switch self {
-        case .gemini: return "Get a free key at aistudio.google.com/apikey (Google account, no card)."
-        case .groq: return "Get a free key at console.groq.com/keys."
-        case .openRouter: return "Get a key at openrouter.ai/keys; models whose name ends in :free cost nothing."
-        case .ollama: return "No key needed. Install Ollama, then run: ollama pull llama3.1:8b"
-        case .anthropic: return "Paid. Get a key at console.anthropic.com."
+        case .gemini: return L10n.tr("Get a free key at aistudio.google.com/apikey (Google account, no card).")
+        case .groq: return L10n.tr("Get a free key at console.groq.com/keys.")
+        case .openRouter: return L10n.tr("Get a key at openrouter.ai/keys; models whose name ends in :free cost nothing.")
+        case .ollama: return L10n.tr("No key needed. Install Ollama, then run: ollama pull llama3.1:8b")
+        case .anthropic: return L10n.tr("Paid. Get a key at console.anthropic.com.")
         }
     }
 }

@@ -40,7 +40,8 @@ enum OverlayPreview {
         ]
     }
 
-    static func render(to directory: String) {
+    static func render(to directory: String, language: UILanguage = .english) {
+        L10n.language = language.resolved()
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         for (scheme, background) in [(ColorScheme.light, Color(white: 0.96)), (.dark, Color(white: 0.16))] {
             for scene in scenes() {
@@ -64,18 +65,20 @@ enum OverlayPreview {
                 try? png.write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
             }
         }
-        renderSetup(to: directory)
+        renderSetup(to: directory, language: language)
     }
 
     /// Renders the Setup window's two tabs with throw-away stores (never touches the real Keychain or settings).
-    static func renderSetup(to directory: String) {
+    static func renderSetup(to directory: String, language: UILanguage) {
         for tab in [SetupTab.setup, .settings] {
             for scheme in [ColorScheme.light, .dark] {
                 let suite = "preview.\(UUID().uuidString)"
+                let store = UserDefaultsSettingsStore(defaults: UserDefaults(suiteName: suite)!)
+                store.save(AppSettings(uiLanguage: language))   // the model reads the language from its settings
                 let model = SetupViewModel(
                     permissions: FakePermissionsService(microphone: .granted, screenRecording: .notDetermined),
                     secrets: InMemorySecretStore(),
-                    settingsStore: UserDefaultsSettingsStore(defaults: UserDefaults(suiteName: suite)!)
+                    settingsStore: store
                 )
                 model.selectedTab = tab
                 let view = SetupView(model: model).environment(\.colorScheme, scheme)

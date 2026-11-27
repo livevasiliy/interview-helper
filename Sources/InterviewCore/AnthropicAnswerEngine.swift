@@ -50,7 +50,7 @@ public struct AnthropicAnswerEngine: AnswerEngine, @unchecked Sendable {
                     let request = try makeRequest(for: prompt)
                     let (bytes, response) = try await session.bytes(for: request)
                     guard let http = response as? HTTPURLResponse else {
-                        throw ProviderError.connectionFailed("No HTTP response")
+                        throw ProviderError.connectionFailed(L10n.tr("No HTTP response"))
                     }
                     guard http.statusCode == 200 else {
                         var body = Data()

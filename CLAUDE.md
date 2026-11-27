@@ -52,6 +52,13 @@ Key design points:
 - **The overlay never activates the app** (`OverlayPanel`, `canBecomeKey = false`) so typing in the interview app keeps working. Consequences: the panel's own border shows no resize cursors, so `ResizeHandleView` implements resizing (geometry in tested `WindowResize`); hide-from-screen-sharing (`sharingType = .none`) is best effort and not reliable against ScreenCaptureKit-based apps.
 - **App-only glue:** `SessionCoordinator` builds the real pipeline from settings/Keychain at each start and handles sleep/wake; `GlobalHotKey` (Carbon) registers the shortcuts defined once in `Shortcut` (⌃⌥Space start/stop, ⌃⌥↩ answer now, ⌃⌥O overlay, ⌃⌥, settings; ⌘, only works while the app is active, a global ⌘, would hijack every app); `StatusItemFactory` creates the menu bar icon and falls back to a Dock icon if a notch hides it.
 
+## Localization (English + Russian, switchable at runtime)
+
+- **Every user-visible string goes through `tr("English text")`** (`L10n.tr` in Core, a global `tr` helper in `App/Services/Localization.swift`). The English text is the key; Russian lives in `Sources/InterviewCore/Translations.swift`. A missing translation falls back to English. Use `%@` / `%ld` placeholders and keep them identical in the translation. SwiftUI: `Text(tr("…"))`, not `Text("…")` (a bare literal bypasses the table).
+- `UILanguage` (Auto / Русский / English) is an `AppSettings` field; Auto follows the system language. `SetupViewModel` sets `L10n.language` when the setting changes; the menus are rebuilt (`AppDelegate.languageChanged`) and the overlay observes `OverlayAppearance.language`, so a switch applies immediately. `L10n.language` defaults to English so tests are deterministic.
+- `LocalizationTests` scans the sources: every `tr("…")` literal must have a Russian entry, every entry must be used, placeholders must match. Add the Russian entry in the same change as the new string or the suite fails. Debug items and the audio-test dialogs are intentionally English-only.
+- The *interview* language (speech recognition + answer language) is a separate setting (`InterviewLanguage`).
+
 ## Verification (what only a human can check)
 
 Manual run list lives in `.10x/decisions/qa/interview-helper.md` (verified so far: mic + system audio → Deepgram → Gemini answer in Russian). Useful smoke test without a call: start a session, then `say -v Milena "Расскажите, что такое транзакция в базе данных?"` (system audio path). Still unverified there: latency (< 3 s target), hotkeys in practice, sleep/wake, English, Groq/OpenRouter/Ollama.

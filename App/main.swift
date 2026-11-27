@@ -30,29 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.toolTip = "Interview Helper"
         setStatusIcon("waveform", fallback: "IH")
 
-        let menu = NSMenu()
-        let status = NSMenuItem(title: "Idle", action: nil, keyEquivalent: "")
-        status.isEnabled = false
-        menu.addItem(status)
-        let info = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        info.isEnabled = false
-        menu.addItem(info)
-        menu.addItem(.separator())
-        let toggle = menu.addItem(withTitle: "Start Session    \(Shortcut.startStop.symbols)", action: #selector(toggleSession), keyEquivalent: "")
-        toggle.target = self
-        menu.addItem(withTitle: "Answer Now    \(Shortcut.answerNow.symbols)", action: #selector(answerNow), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Show/Hide Overlay    \(Shortcut.toggleOverlay.symbols)", action: #selector(toggleOverlay), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Debug: Test System Audio (5 s)", action: #selector(testSystemAudio), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Debug: Test Microphone (5 s)", action: #selector(testMicrophone), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Interview Helper", action: #selector(quitNow), keyEquivalent: "q").target = self
-        item.menu = menu
-        statusLine = status
-        infoLine = info
-        toggleItem = toggle
+        buildStatusMenu(for: item)
 
         let overlay = OverlayController(session: session, appearance: appearance)
         self.overlay = overlay
@@ -67,6 +45,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { overlay.setHiddenFromCapture($0) }
+            .store(in: &cancellables)
+        // Switching the interface language redraws the menus and the overlay straight away.
+        setupModel.$settings
+            .map(\.uiLanguage)
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.languageChanged() }
             .store(in: &cancellables)
         // The menu shows what the app is configured to use, and whether setup is still missing something.
         setupModel.$settings
@@ -124,24 +110,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appItem = NSMenuItem()
         main.addItem(appItem)
         let appMenu = NSMenu(title: "Interview Helper")
-        appMenu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
+        appMenu.addItem(withTitle: tr("Settings…"), action: #selector(showSettings), keyEquivalent: ",").target = self
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit Interview Helper", action: #selector(quitNow), keyEquivalent: "q").target = self
+        appMenu.addItem(withTitle: tr("Quit Interview Helper"), action: #selector(quitNow), keyEquivalent: "q").target = self
         appItem.submenu = appMenu
 
         let editItem = NSMenuItem()
         main.addItem(editItem)
-        let edit = NSMenu(title: "Edit")
-        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        let edit = NSMenu(title: tr("Edit"))
+        edit.addItem(withTitle: tr("Undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: tr("Redo"), action: Selector(("redo:")), keyEquivalent: "Z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: tr("Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: tr("Copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: tr("Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: tr("Select All"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = edit
 
         NSApp.mainMenu = main
+    }
+
+    /// The menu bar icon's menu. Built from scratch so a language switch can simply rebuild it.
+    private func buildStatusMenu(for item: NSStatusItem) {
+        let menu = NSMenu()
+        let status = NSMenuItem(title: tr("Idle"), action: nil, keyEquivalent: "")
+        status.isEnabled = false
+        menu.addItem(status)
+        let info = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        info.isEnabled = false
+        menu.addItem(info)
+        menu.addItem(.separator())
+        let toggle = menu.addItem(withTitle: tr("Start Session    %@", Shortcut.startStop.symbols), action: #selector(toggleSession), keyEquivalent: "")
+        toggle.target = self
+        menu.addItem(withTitle: tr("Answer Now    %@", Shortcut.answerNow.symbols), action: #selector(answerNow), keyEquivalent: "").target = self
+        menu.addItem(withTitle: tr("Show/Hide Overlay    %@", Shortcut.toggleOverlay.symbols), action: #selector(toggleOverlay), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: tr("Settings…"), action: #selector(showSettings), keyEquivalent: ",").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Debug: Test System Audio (5 s)", action: #selector(testSystemAudio), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Debug: Test Microphone (5 s)", action: #selector(testMicrophone), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: tr("Quit Interview Helper"), action: #selector(quitNow), keyEquivalent: "q").target = self
+        item.menu = menu
+        statusLine = status
+        infoLine = info
+        toggleItem = toggle
+    }
+
+    private func languageChanged() {
+        appearance.language = L10n.language
+        installMainMenu()
+        if let item = statusItem { buildStatusMenu(for: item) }
+        render(state: session.state, warnings: session.warnings)
+        renderInfo(settings: setupModel.settings, setup: setupModel.state)
     }
 
     private func verifyMenuBarIcon() {
@@ -150,13 +171,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !result.isVisible else { return }
         // No room for the icon: also show the app in the Dock so it is never unreachable.
         NSApp.setActivationPolicy(.regular)
-        setupModel.showMenuBarNote("The menu bar is full, so macOS hides the Interview Helper icon. The app now also shows in the Dock; click it to open this window. Quitting a few menu bar apps (or ⌘-dragging icons away) frees space.")
+        setupModel.showMenuBarNote(tr("The menu bar is full, so macOS hides the Interview Helper icon. The app now also shows in the Dock; click it to open this window. Quitting a few menu bar apps (or ⌘-dragging icons away) frees space."))
         showSettings()
     }
 
     private func renderInfo(settings: AppSettings, setup: SetupState) {
         var text = "\(settings.answerProvider.displayName) · \(settings.interviewLanguage.displayName)"
-        if !setup.isReady { text += " — setup needed" }
+        if !setup.isReady { text += tr(" — setup needed") }
         infoLine?.title = text
     }
 
@@ -165,15 +186,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let fallback: String
         var line: String
         switch state {
-        case .idle: symbol = "waveform"; fallback = "IH"; line = "Idle"
-        case .starting: symbol = "ellipsis.circle"; fallback = "IH …"; line = "Starting…"
-        case .running: symbol = "mic.fill"; fallback = "IH ●"; line = "Listening"
-        case .stopping: symbol = "ellipsis.circle"; fallback = "IH …"; line = "Stopping…"
-        case .failed(let message): symbol = "exclamationmark.triangle.fill"; fallback = "IH !"; line = "Failed: \(message)"
+        case .idle: symbol = "waveform"; fallback = "IH"; line = tr("Idle")
+        case .starting: symbol = "ellipsis.circle"; fallback = "IH …"; line = tr("Starting…")
+        case .running: symbol = "mic.fill"; fallback = "IH ●"; line = tr("Listening")
+        case .stopping: symbol = "ellipsis.circle"; fallback = "IH …"; line = tr("Stopping…")
+        case .failed(let message): symbol = "exclamationmark.triangle.fill"; fallback = "IH !"; line = tr("Failed: %@", message)
         }
         if let warning = warnings.last { line += " — \(warning)" }
         if !unavailableShortcuts.isEmpty {
-            line += " — shortcut taken by another app: " + unavailableShortcuts.map(\.symbols).joined(separator: ", ")
+            line += tr(" — shortcut taken by another app: %@", unavailableShortcuts.map(\.symbols).joined(separator: ", "))
         }
         setStatusIcon(symbol, fallback: fallback)
         statusItem?.button?.toolTip = "Interview Helper: " + line
@@ -190,8 +211,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sessionWasActive = active
 
         switch state {
-        case .starting, .running: toggleItem?.title = "Stop Session    \(Shortcut.startStop.symbols)"
-        default: toggleItem?.title = "Start Session    \(Shortcut.startStop.symbols)"
+        case .starting, .running: toggleItem?.title = tr("Stop Session    %@", Shortcut.startStop.symbols)
+        default: toggleItem?.title = tr("Start Session    %@", Shortcut.startStop.symbols)
         }
         toggleItem?.isEnabled = state != .stopping
     }
@@ -272,7 +293,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // Dev tool: `InterviewHelper --render-overlay-preview=/some/dir` writes PNGs of the overlay and exits.
 if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--render-overlay-preview=") }) {
     let directory = String(arg.dropFirst("--render-overlay-preview=".count))
-    MainActor.assumeIsolated { OverlayPreview.render(to: directory) }
+    let language: UILanguage = CommandLine.arguments.contains("--language=ru") ? .russian : .english
+    MainActor.assumeIsolated { OverlayPreview.render(to: directory, language: language) }
     exit(0)
 }
 

@@ -113,7 +113,7 @@ public actor SessionController {
                 guard state == .starting else { await teardown(); return }
                 launchTranscription(audio: stream, speaker: .me, essential: false)
             } catch {
-                eventContinuation.yield(.warning("Microphone unavailable: \(describe(error))"))
+                eventContinuation.yield(.warning(L10n.tr("Microphone unavailable: %@", describe(error))))
             }
         }
 
@@ -142,9 +142,9 @@ public actor SessionController {
     public func sourceStopped(_ speaker: Speaker, reason: String) async {
         guard state == .running else { return }
         if speaker == .interviewer {
-            await fail("Audio capture stopped: \(reason)")
+            await fail(L10n.tr("Audio capture stopped: %@", reason))
         } else {
-            eventContinuation.yield(.warning("Microphone stopped: \(reason)"))
+            eventContinuation.yield(.warning(L10n.tr("Microphone stopped: %@", reason)))
         }
     }
 
@@ -171,7 +171,7 @@ public actor SessionController {
         if essential {
             await fail(describe(error))
         } else {
-            eventContinuation.yield(.warning("Microphone transcription stopped: \(describe(error))"))
+            eventContinuation.yield(.warning(L10n.tr("Microphone transcription stopped: %@", describe(error))))
         }
     }
 
@@ -227,7 +227,7 @@ public actor SessionController {
         } else if let last = turns.last(where: { $0.speaker == .interviewer }) {
             ask(DetectedQuestion(text: last.text))   // re-answer the most recent question
         } else {
-            eventContinuation.yield(.warning("Nothing heard yet to answer."))
+            eventContinuation.yield(.warning(L10n.tr("Nothing heard yet to answer.")))
         }
     }
 

@@ -65,7 +65,7 @@ public struct FallbackAnswerEngine: AnswerEngine {
 
     /// One line per model (latest failure of each), so the user can see why none of them worked.
     static func report(_ failures: [(name: String, error: Error)]) -> ProviderError {
-        guard !failures.isEmpty else { return .connectionFailed("No answer engine is available") }
+        guard !failures.isEmpty else { return .connectionFailed(L10n.tr("No answer engine is available")) }
         var order: [String] = []
         var latest: [String: Error] = [:]
         for failure in failures {

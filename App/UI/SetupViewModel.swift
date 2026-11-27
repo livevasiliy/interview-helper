@@ -18,6 +18,9 @@ final class SetupViewModel: ObservableObject {
     @Published var settings: AppSettings {
         didSet {
             settingsStore.save(settings)
+            if oldValue.uiLanguage != settings.uiLanguage {
+                L10n.language = settings.uiLanguage.resolved()
+            }
             if oldValue.answerProvider != settings.answerProvider {
                 answerKeyDraft = ""
                 refresh()   // the required key depends on the provider
@@ -47,6 +50,7 @@ final class SetupViewModel: ObservableObject {
         self.secrets = secrets
         self.settingsStore = settingsStore
         let loaded = settingsStore.load()
+        L10n.language = loaded.uiLanguage.resolved()   // before any view or menu reads a string
         self.settings = loaded
         self.state = SetupState.current(permissions: permissions, secrets: secrets, provider: loaded.answerProvider)
 
@@ -75,15 +79,15 @@ final class SetupViewModel: ObservableObject {
     func showBlocked(missing: [SetupStep]) {
         let names = missing.map { step -> String in
             switch step {
-            case .microphone: return "Microphone permission"
-            case .screenRecording: return "Screen Recording permission"
-            case .answerKey: return "\(settings.answerProvider.displayName) API key"
-            case .deepgramKey: return "Deepgram API key"
+            case .microphone: return tr("Microphone permission")
+            case .screenRecording: return tr("Screen Recording permission")
+            case .answerKey: return tr("API key for %@", settings.answerProvider.displayName)
+            case .deepgramKey: return tr("API key for %@", "Deepgram")
             }
         }
         notice = names.isEmpty
-            ? "The session could not start. Check the keys and permissions below."
-            : "Can't start a session yet. Still missing: " + names.joined(separator: ", ") + "."
+            ? tr("The session could not start. Check the keys and permissions below.")
+            : tr("Can't start a session yet. Still missing: %@.", names.joined(separator: ", "))
         selectedTab = .setup
     }
 

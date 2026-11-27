@@ -17,6 +17,8 @@ struct OverlayContent: Equatable {
 @MainActor
 final class OverlayAppearance: ObservableObject {
     @Published var textSize: Double = AppSettings.defaultOverlayTextSize
+    /// Changing it makes the overlay redraw, so its texts follow a language switch immediately.
+    @Published var language: AppLanguage = L10n.language
 }
 
 /// Live wrapper: observes the coordinator and feeds `OverlayView`.
@@ -104,13 +106,13 @@ struct OverlayView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             Spacer(minLength: 8)
-            iconButton("bolt.fill", help: "Answer now (\(Shortcut.answerNow.symbols))", action: onAnswerNow)
+            iconButton("bolt.fill", help: tr("Answer now (%@)", Shortcut.answerNow.symbols), action: onAnswerNow)
                 .disabled(content.state != .running)
-            iconButton("text.bubble", help: showTranscript ? "Hide transcript" : "Show transcript") { showTranscript.toggle() }
+            iconButton("text.bubble", help: showTranscript ? tr("Hide transcript") : tr("Show transcript")) { showTranscript.toggle() }
                 .opacity(showTranscript ? 1 : 0.6)
-            iconButton("doc.on.doc", help: "Copy answer", action: onCopy)
+            iconButton("doc.on.doc", help: tr("Copy answer"), action: onCopy)
                 .disabled(content.answer.isEmpty)
-            iconButton("xmark", help: "Hide overlay (\(Shortcut.toggleOverlay.symbols))", action: onHide)
+            iconButton("xmark", help: tr("Hide overlay (%@)", Shortcut.toggleOverlay.symbols), action: onHide)
         }
     }
 
@@ -137,11 +139,11 @@ struct OverlayView: View {
 
     private var statusText: String {
         switch content.state {
-        case .idle: return "Not listening · \(Shortcut.startStop.symbols) to start"
-        case .starting: return "Starting…"
-        case .running: return "Listening"
-        case .stopping: return "Stopping…"
-        case .failed: return "Session stopped"
+        case .idle: return tr("Not listening · %@ to start", Shortcut.startStop.symbols)
+        case .starting: return tr("Starting…")
+        case .running: return tr("Listening")
+        case .stopping: return tr("Stopping…")
+        case .failed: return tr("Session stopped")
         }
     }
 
@@ -175,7 +177,7 @@ struct OverlayView: View {
             notice(message, color: .red)
         }
         if let error = content.answerError {
-            notice("Answer failed: \(error)", color: .red)
+            notice(tr("Answer failed: %@", error), color: .red)
         }
         ForEach(Array(content.warnings.suffix(2).enumerated()), id: \.offset) { _, warning in
             notice(warning, color: .orange)
@@ -192,20 +194,20 @@ struct OverlayView: View {
     @ViewBuilder private var questionBlock: some View {
         if let question = content.question {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Question").font(labelFont).foregroundStyle(.secondary)
+                Text(tr("Question")).font(labelFont).foregroundStyle(.secondary)
                 Text(question).font(questionFont).fixedSize(horizontal: false, vertical: true)
             }
         } else if content.state == .running {
-            Text("Waiting for the first question…").font(questionFont).foregroundStyle(.secondary)
+            Text(tr("Waiting for the first question…")).font(questionFont).foregroundStyle(.secondary)
         }
     }
 
     @ViewBuilder private var answerBlock: some View {
         if content.question != nil {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Suggested answer").font(labelFont).foregroundStyle(.secondary)
+                Text(tr("Suggested answer")).font(labelFont).foregroundStyle(.secondary)
                 if content.answer.isEmpty {
-                    Text(content.isAnswering ? "Thinking…" : "—").font(answerFont).foregroundStyle(.secondary)
+                    Text(content.isAnswering ? tr("Thinking…") : "—").font(answerFont).foregroundStyle(.secondary)
                 } else {
                     VStack(alignment: .leading, spacing: textSize * 0.3) {
                         ForEach(Array(Self.answerLines(content.answer).enumerated()), id: \.offset) { _, line in
@@ -227,12 +229,12 @@ struct OverlayView: View {
 
     private var transcriptBlock: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("Transcript").font(labelFont).foregroundStyle(.secondary)
+            Text(tr("Transcript")).font(labelFont).foregroundStyle(.secondary)
             if content.lines.isEmpty {
-                Text("Nothing heard yet.").font(smallFont).foregroundStyle(.secondary)
+                Text(tr("Nothing heard yet.")).font(smallFont).foregroundStyle(.secondary)
             }
             ForEach(content.lines.suffix(8)) { line in
-                (Text(line.speaker == .interviewer ? "Interviewer: " : "You: ").bold() + Text(line.text))
+                (Text(line.speaker == .interviewer ? tr("Interviewer: ") : tr("You: ")).bold() + Text(line.text))
                     .font(smallFont)
                     .foregroundStyle(line.isFinal ? .primary : .secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -10,7 +10,7 @@ public enum InterviewLanguage: String, Codable, CaseIterable, Sendable, Identifi
 
     public var displayName: String {
         switch self {
-        case .auto: return "Auto-detect"
+        case .auto: return L10n.tr("Auto-detect")
         case .russian: return "Русский"
         case .english: return "English"
         }
@@ -52,6 +52,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// Model overrides for the other providers, keyed by `AnswerProvider.rawValue`.
     public var providerModels: [String: String]
     public var interviewLanguage: InterviewLanguage
+    /// Language of the app's own windows and menus. Auto follows the system language.
+    public var uiLanguage: UILanguage
     /// Exclude the overlay from screen sharing/recording. Off by default.
     public var hideOverlayFromCapture: Bool
     public var resume: String
@@ -73,6 +75,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         anthropicModel: String = AppSettings.defaultModel,
         providerModels: [String: String] = [:],
         interviewLanguage: InterviewLanguage = .auto,
+        uiLanguage: UILanguage = .auto,
         hideOverlayFromCapture: Bool = false,
         resume: String = "",
         roleContext: String = "",
@@ -84,6 +87,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.anthropicModel = anthropicModel
         self.providerModels = providerModels
         self.interviewLanguage = interviewLanguage
+        self.uiLanguage = uiLanguage
         self.hideOverlayFromCapture = hideOverlayFromCapture
         self.resume = resume
         self.roleContext = roleContext
@@ -117,7 +121,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     // MARK: Codable (tolerant: settings saved by an older version still load)
 
     private enum CodingKeys: String, CodingKey {
-        case answerProvider, anthropicModel, providerModels, interviewLanguage
+        case answerProvider, anthropicModel, providerModels, interviewLanguage, uiLanguage
         case language   // legacy free-text answer language, read only
         case hideOverlayFromCapture, resume, roleContext
         case microphoneDeviceUID, answerMicrophoneQuestions, overlayTextSize
@@ -136,6 +140,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         } else {
             interviewLanguage = d.interviewLanguage
         }
+        uiLanguage = (try? c.decodeIfPresent(UILanguage.self, forKey: .uiLanguage)) ?? d.uiLanguage
         hideOverlayFromCapture = try c.decodeIfPresent(Bool.self, forKey: .hideOverlayFromCapture) ?? d.hideOverlayFromCapture
         resume = try c.decodeIfPresent(String.self, forKey: .resume) ?? d.resume
         roleContext = try c.decodeIfPresent(String.self, forKey: .roleContext) ?? d.roleContext
@@ -150,6 +155,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try c.encode(anthropicModel, forKey: .anthropicModel)
         try c.encode(providerModels, forKey: .providerModels)
         try c.encode(interviewLanguage, forKey: .interviewLanguage)
+        try c.encode(uiLanguage, forKey: .uiLanguage)
         try c.encode(hideOverlayFromCapture, forKey: .hideOverlayFromCapture)
         try c.encode(resume, forKey: .resume)
         try c.encode(roleContext, forKey: .roleContext)

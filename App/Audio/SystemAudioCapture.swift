@@ -14,12 +14,12 @@ enum AudioCaptureError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .permissionDenied: return "Screen Recording permission is not granted."
-        case .microphonePermissionDenied: return "Microphone permission is not granted."
-        case .noInputDevice: return "No microphone input device is available."
-        case .inputDeviceNotFound: return "The microphone chosen in Settings is not connected. Pick another one or reconnect it."
-        case .noDisplay: return "No display found to attach the audio capture to."
-        case .alreadyRunning: return "System audio capture is already running."
+        case .permissionDenied: return tr("Screen Recording permission is not granted.")
+        case .microphonePermissionDenied: return tr("Microphone permission is not granted.")
+        case .noInputDevice: return tr("No microphone input device is available.")
+        case .inputDeviceNotFound: return tr("The microphone chosen in Settings is not connected. Pick another one or reconnect it.")
+        case .noDisplay: return tr("No display found to attach the audio capture to.")
+        case .alreadyRunning: return tr("System audio capture is already running.")
         case .underlying(let error): return error.localizedDescription
         }
     }

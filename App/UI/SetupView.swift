@@ -7,10 +7,10 @@ struct SetupView: View {
     var body: some View {
         TabView(selection: $model.selectedTab) {
             SetupChecklistView(model: model)
-                .tabItem { Label("Setup", systemImage: "checklist") }
+                .tabItem { Label(tr("Setup"), systemImage: "checklist") }
                 .tag(SetupTab.setup)
             SettingsFormView(model: model)
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tabItem { Label(tr("Settings"), systemImage: "gearshape") }
                 .tag(SetupTab.settings)
         }
         .padding(16)
@@ -41,34 +41,34 @@ private struct SetupChecklistView: View {
 
             Section {
                 if model.state.isReady {
-                    Label("Everything is set up.", systemImage: "checkmark.circle.fill")
+                    Label(tr("Everything is set up."), systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                 } else {
-                    Text("Finish these steps before starting a session.")
+                    Text(tr("Finish these steps before starting a session."))
                         .foregroundStyle(.secondary)
                 }
             }
 
-            Section("Permissions") {
-                row("Microphone", "Transcribes your side of the conversation.",
+            Section(tr("Permissions")) {
+                row(tr("Microphone"), tr("Transcribes your side of the conversation."),
                     done: model.state.isDone(.microphone),
-                    action: model.state.microphone == .denied ? "Open System Settings" : "Allow",
+                    action: model.state.microphone == .denied ? tr("Open System Settings") : tr("Allow"),
                     perform: model.requestMicrophone)
-                row("Screen Recording", "Lets the app hear the interviewer's audio from your calls. No video is recorded.",
+                row(tr("Screen Recording"), tr("Lets the app hear the interviewer's audio from your calls. No video is recorded."),
                     done: model.state.isDone(.screenRecording),
-                    action: "Allow", perform: model.requestScreenRecording)
+                    action: tr("Allow"), perform: model.requestScreenRecording)
                 if !model.state.isDone(.screenRecording) {
                     HStack {
-                        Text("After enabling Screen Recording, restart the app.")
+                        Text(tr("After enabling Screen Recording, restart the app."))
                             .font(.footnote).foregroundStyle(.secondary)
                         Spacer()
-                        Button("Restart app", action: model.relaunch)
+                        Button(tr("Restart app"), action: model.relaunch)
                     }
                 }
             }
 
-            Section("Suggested answers: who writes them") {
-                Picker("Provider", selection: $model.settings.answerProvider) {
+            Section(tr("Suggested answers: who writes them")) {
+                Picker(tr("Provider"), selection: $model.settings.answerProvider) {
                     ForEach(AnswerProvider.allCases) { Text($0.pickerTitle).tag($0) }
                 }
                 let provider = model.settings.answerProvider
@@ -77,29 +77,29 @@ private struct SetupChecklistView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)
-                    if let url = provider.keyHelpURL { Link("Open page", destination: url).font(.footnote) }
+                    if let url = provider.keyHelpURL { Link(tr("Open page"), destination: url).font(.footnote) }
                 }
                 if let secretKey = provider.secretKey {
                     keyRow(provider.displayName, key: secretKey, draft: $model.answerKeyDraft, done: model.state.hasAnswerKey)
                 } else {
-                    Label("No key needed", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    Label(tr("No key needed"), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                 }
             }
 
-            Section("Speech recognition (keys are stored in your Keychain)") {
+            Section(tr("Speech recognition (keys are stored in your Keychain)")) {
                 keyRow("Deepgram", key: .deepgramAPIKey, draft: $model.deepgramDraft, done: model.state.hasDeepgramKey)
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Deepgram gives $200 of free credit at sign-up, no card needed.")
+                    Text(tr("Deepgram gives $200 of free credit at sign-up, no card needed."))
                         .font(.footnote).foregroundStyle(.secondary)
                     Spacer(minLength: 8)
-                    Link("Sign up", destination: URL(string: "https://console.deepgram.com/signup")!).font(.footnote)
+                    Link(tr("Sign up"), destination: URL(string: "https://console.deepgram.com/signup")!).font(.footnote)
                 }
                 if let error = model.errorMessage {
                     Text(error).font(.footnote).foregroundStyle(.red)
                 }
             }
 
-            Section("Keyboard shortcuts (work in any app)") {
+            Section(tr("Keyboard shortcuts (work in any app)")) {
                 ForEach(Shortcut.allCases, id: \.self) { shortcut in
                     HStack {
                         Text(shortcut.title)
@@ -134,15 +134,15 @@ private struct SetupChecklistView: View {
             HStack {
                 Image(systemName: done ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(done ? .green : .secondary)
-                Text(title.hasSuffix("API key") ? title : title + " API key")
+                Text(tr("%@ API key", title))
                 Spacer()
-                if done { Button("Remove") { model.removeKey(key) } }
+                if done { Button(tr("Remove")) { model.removeKey(key) } }
             }
             HStack {
-                SecureField(done ? "Saved. Paste a new key to replace it" : "Paste API key", text: draft)
+                SecureField(done ? tr("Saved. Paste a new key to replace it") : tr("Paste API key"), text: draft)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { model.saveKey(key) }
-                Button("Save") { model.saveKey(key) }
+                Button(tr("Save")) { model.saveKey(key) }
                     .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
@@ -163,58 +163,61 @@ private struct SettingsFormView: View {
 
     var body: some View {
         Form {
-            Section("Language") {
-                Picker("Interview language", selection: $model.settings.interviewLanguage) {
+            Section(tr("Language")) {
+                Picker(tr("Interface language"), selection: $model.settings.uiLanguage) {
+                    ForEach(UILanguage.allCases) { Text($0.displayName).tag($0) }
+                }
+                Picker(tr("Interview language"), selection: $model.settings.interviewLanguage) {
                     ForEach(InterviewLanguage.allCases) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                Text("Sets speech recognition and the language of the suggested answers. Applies the next time you start a session. Auto-detect copes with mixed languages but uses more of your Deepgram credit.")
+                Text(tr("Sets speech recognition and the language of the suggested answers. Applies the next time you start a session. Auto-detect copes with mixed languages but uses more of your Deepgram credit."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
-            Section("Answers") {
+            Section(tr("Answers")) {
                 let provider = model.settings.answerProvider
-                LabeledContent("Provider", value: provider.pickerTitle)
-                TextField("Model", text: modelBinding(provider), prompt: Text(provider.defaultModel))
-                Text("Leave empty to use \(provider.defaultModel). Change the provider on the Setup tab.")
+                LabeledContent(tr("Provider"), value: provider.pickerTitle)
+                TextField(tr("Model"), text: modelBinding(provider), prompt: Text(provider.defaultModel))
+                Text(tr("Leave empty to use %@. Change the provider on the Setup tab.", provider.defaultModel))
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
-            Section("Microphone") {
-                Picker("Input device", selection: $model.settings.microphoneDeviceUID) {
-                    Text("System default" + (model.defaultInputName.map { " (\($0))" } ?? "")).tag("")
+            Section(tr("Microphone")) {
+                Picker(tr("Input device"), selection: $model.settings.microphoneDeviceUID) {
+                    Text(tr("System default") + (model.defaultInputName.map { " (\($0))" } ?? "")).tag("")
                     ForEach(model.inputDevices) { Text($0.name).tag($0.id) }
                     if !model.settings.microphoneDeviceUID.isEmpty,
                        !model.inputDevices.contains(where: { $0.id == model.settings.microphoneDeviceUID }) {
-                        Text("Saved device (not connected)").tag(model.settings.microphoneDeviceUID)
+                        Text(tr("Saved device (not connected)")).tag(model.settings.microphoneDeviceUID)
                     }
                 }
-                Text("Applies the next time you start a session. With speakers instead of headphones, the microphone also hears the interviewer.")
+                Text(tr("Applies the next time you start a session. With speakers instead of headphones, the microphone also hears the interviewer."))
                     .font(.footnote).foregroundStyle(.secondary)
-                Toggle("Also answer questions I say into the microphone", isOn: $model.settings.answerMicrophoneQuestions)
-                Text("For testing with your own voice, or when the interviewer is in the room. Off by default: normally only the interviewer's audio is treated as questions.")
+                Toggle(tr("Also answer questions I say into the microphone"), isOn: $model.settings.answerMicrophoneQuestions)
+                Text(tr("For testing with your own voice, or when the interviewer is in the room. Off by default: normally only the interviewer's audio is treated as questions."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
-            Section("Your background") {
-                Text("Role / company").font(.footnote).foregroundStyle(.secondary)
+            Section(tr("Your background")) {
+                Text(tr("Role / company")).font(.footnote).foregroundStyle(.secondary)
                 TextEditor(text: $model.settings.roleContext)
                     .frame(height: 60)
-                Text("Resume").font(.footnote).foregroundStyle(.secondary)
+                Text(tr("Resume")).font(.footnote).foregroundStyle(.secondary)
                 TextEditor(text: $model.settings.resume)
                     .frame(minHeight: 100)
             }
 
-            Section("Overlay") {
+            Section(tr("Overlay")) {
                 HStack {
-                    Text("Text size")
+                    Text(tr("Text size"))
                     Slider(value: $model.settings.overlayTextSize, in: AppSettings.overlayTextSizeRange, step: 1)
-                    Text("\(Int(model.settings.overlayTextSize)) pt")
+                    Text(tr("%ld pt", Int(model.settings.overlayTextSize)))
                         .monospacedDigit()
-                        .frame(width: 46, alignment: .trailing)
+                        .frame(width: 52, alignment: .trailing)
                 }
-                Toggle("Hide overlay from screen sharing and recordings", isOn: $model.settings.hideOverlayFromCapture)
-                Text("Off by default. Best effort only: on recent macOS versions some screen-sharing apps can still capture the overlay. Use this only where it is allowed, and follow the rules of your interview or employer.")
+                Toggle(tr("Hide overlay from screen sharing and recordings"), isOn: $model.settings.hideOverlayFromCapture)
+                Text(tr("Off by default. Best effort only: on recent macOS versions some screen-sharing apps can still capture the overlay. Use this only where it is allowed, and follow the rules of your interview or employer."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
