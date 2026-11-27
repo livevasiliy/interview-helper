@@ -37,6 +37,7 @@ struct LiveOverlayView: View {
             },
             onAnswerNow: { session.askNow() },
             onAnalyzeScreen: { session.analyzeScreen() },
+            onAskTyped: { session.ask(typed: $0) },
             onHide: onHide
         )
     }
@@ -50,6 +51,7 @@ struct OverlayView: View {
     var onCopy: () -> Void
     var onAnswerNow: () -> Void
     var onAnalyzeScreen: () -> Void
+    var onAskTyped: (String) -> Void
     var onHide: () -> Void
 
     init(
@@ -59,6 +61,7 @@ struct OverlayView: View {
         onCopy: @escaping () -> Void = {},
         onAnswerNow: @escaping () -> Void = {},
         onAnalyzeScreen: @escaping () -> Void = {},
+        onAskTyped: @escaping (String) -> Void = { _ in },
         onHide: @escaping () -> Void = {}
     ) {
         self.content = content
@@ -67,6 +70,7 @@ struct OverlayView: View {
         self.onCopy = onCopy
         self.onAnswerNow = onAnswerNow
         self.onAnalyzeScreen = onAnalyzeScreen
+        self.onAskTyped = onAskTyped
         self.onHide = onHide
     }
 
@@ -93,6 +97,7 @@ struct OverlayView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            typedQuestion
             Divider()
             hints
         }
@@ -102,32 +107,47 @@ struct OverlayView: View {
 
     // MARK: Header
 
+    /// Icons with short captions when the panel is wide enough; icons alone (with tooltips) when it is not.
     private var header: some View {
-        HStack(spacing: 10) {
+        ViewThatFits(in: .horizontal) {
+            headerRow(labeled: true)
+            headerRow(labeled: false)
+        }
+    }
+
+    private func headerRow(labeled: Bool) -> some View {
+        HStack(spacing: labeled ? 6 : 10) {
             Circle().fill(statusColor).frame(width: 9, height: 9).accessibilityHidden(true)
             Text(statusText)
                 .font(headerFont)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .fixedSize(horizontal: labeled, vertical: false)
             Spacer(minLength: 8)
-            iconButton("bolt.fill", help: tr("Answer now (%@)", Shortcut.answerNow.symbols), action: onAnswerNow)
+            iconButton("bolt.fill", caption: labeled ? tr("answer") : nil,
+                       help: tr("Answer now (%@)", Shortcut.answerNow.symbols), action: onAnswerNow)
                 .disabled(content.state != .running)
-            iconButton("camera.viewfinder", help: tr("Analyze the screen (%@)", Shortcut.analyzeScreen.symbols), action: onAnalyzeScreen)
+            iconButton("camera.viewfinder", caption: labeled ? tr("screen") : nil,
+                       help: tr("Analyze the screen (%@)", Shortcut.analyzeScreen.symbols), action: onAnalyzeScreen)
                 .disabled(content.state != .running)
-            iconButton("text.bubble", help: showTranscript ? tr("Hide transcript") : tr("Show transcript")) { showTranscript.toggle() }
+            iconButton("text.bubble", caption: labeled ? tr("transcript") : nil,
+                       help: showTranscript ? tr("Hide transcript") : tr("Show transcript")) { showTranscript.toggle() }
                 .opacity(showTranscript ? 1 : 0.6)
-            iconButton("doc.on.doc", help: tr("Copy answer"), action: onCopy)
+            iconButton("doc.on.doc", caption: labeled ? tr("copy") : nil, help: tr("Copy answer"), action: onCopy)
                 .disabled(content.answer.isEmpty)
-            iconButton("xmark", help: tr("Hide overlay (%@)", Shortcut.toggleOverlay.symbols), action: onHide)
+            iconButton("xmark", caption: nil, help: tr("Hide overlay (%@)", Shortcut.toggleOverlay.symbols), action: onHide)
         }
     }
 
-    private func iconButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(_ symbol: String, caption: String?, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: iconSize))
-                .frame(width: max(28, iconSize + 12), height: max(28, iconSize + 12))
-                .contentShape(Rectangle())
+            HStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: iconSize))
+                if let caption { Text(caption).font(hintFont).lineLimit(1).fixedSize() }
+            }
+            .padding(.horizontal, caption == nil ? 0 : 6)
+            .frame(minWidth: max(28, iconSize + 12), minHeight: max(28, iconSize + 12))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
@@ -153,6 +173,23 @@ struct OverlayView: View {
         case .failed: return tr("Session stopped")
         }
     }
+
+    // MARK: Typed question
+
+    private var typedQuestion: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "keyboard").foregroundStyle(.secondary).accessibilityHidden(true)
+            TypedQuestionField(placeholder: tr("Type a question and press Return"), fontSize: smallFontSize, onSubmit: onAskTyped)
+                .frame(height: smallFontSize + 8)
+            Image(systemName: "return").foregroundStyle(.tertiary).accessibilityHidden(true)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .opacity(content.state == .running ? 1 : 0.55)
+    }
+
+    private var smallFontSize: CGFloat { max(13, textSize * 0.7) }
 
     // MARK: Hotkey hints
 

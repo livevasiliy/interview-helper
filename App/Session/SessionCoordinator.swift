@@ -128,6 +128,15 @@ final class SessionCoordinator: ObservableObject {
         Task { await controller.askNow() }
     }
 
+    /// Answers a question the user typed into the overlay.
+    func ask(typed text: String) {
+        guard state == .running, let controller else {
+            addWarning(tr("Start a session first (%@), then ask a question.", Shortcut.startStop.symbols))
+            return
+        }
+        Task { await controller.ask(typed: text) }
+    }
+
     /// Takes a screenshot and answers what it shows (a coding task, an error, a quiz).
     func analyzeScreen() {
         guard state == .running, let controller else {

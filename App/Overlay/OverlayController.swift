@@ -3,7 +3,9 @@ import SwiftUI
 
 /// Floating panel that never takes focus: typing in the interview app keeps working while it is visible.
 final class OverlayPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
+    /// With `becomesKeyOnlyIfNeeded` the panel takes keyboard focus only when a text field is clicked,
+    /// and as a non-activating panel it does so without activating this app: the interview app stays frontmost.
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }
 
@@ -24,6 +26,7 @@ final class OverlayController {
             panel.standardWindowButton(button)?.isHidden = true
         }
         panel.isFloatingPanel = true
+        panel.becomesKeyOnlyIfNeeded = true
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.hidesOnDeactivate = false

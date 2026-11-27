@@ -251,4 +251,21 @@ final class ScreenshotPromptTests: XCTestCase {
         XCTAssertTrue(text.prompts.isEmpty)
         await controller.stop()
     }
+
+    func testTypedQuestionIsAnsweredByTheTextEngine() async {
+        let engine = ScriptedEngine(tokens: ["ok"])
+        let controller = SessionController(
+            systemAudio: SpyAudioSource(), microphone: nil, transcriber: ControlledTranscriber(),
+            answerEngine: engine, promptBuilder: PromptBuilder()
+        )
+        let log = EventLog(controller)
+        await controller.start()
+        await log.expect { $0.contains { if case .stateChanged(.running) = $0 { return true } else { return false } } }
+        await controller.ask(typed: "   ")
+        await controller.ask(typed: "  What is a closure?  ")
+        await log.expect { $0.contains { if case .answerFinished = $0 { return true } else { return false } } }
+        XCTAssertEqual(log.questions().map(\.1), ["What is a closure?"])
+        XCTAssertTrue(engine.prompts.first?.messages.last?.content.contains("What is a closure?") == true)
+        await controller.stop()
+    }
 }

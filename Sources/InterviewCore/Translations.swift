@@ -170,5 +170,10 @@ enum Translations {
         "screen": "экран",
         "Role, years of experience, stack, projects": "Должность, годы опыта, стек, проекты",
         "PHP and React.js interview": "Собеседование по PHP и React.js",
+        "answer": "ответ",
+        "transcript": "текст",
+        "copy": "копия",
+        "Start a session first (%@), then ask a question.": "Сначала начните сессию (%@), затем задайте вопрос.",
+        "Type a question and press Return": "Введите вопрос и нажмите Return",
     ]
 }

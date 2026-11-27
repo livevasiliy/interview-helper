@@ -235,6 +235,15 @@ public actor SessionController {
         }
     }
 
+    /// Answers a question the user typed. The recent conversation is context as it stands:
+    /// unlike a detected question, the text is not one of the interviewer's turns.
+    public func ask(typed text: String) {
+        let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard state == .running, !question.isEmpty else { return }
+        let prompt = promptBuilder.build(question: question, history: turns)
+        answer(label: question, prompt: prompt, engine: answerEngine)
+    }
+
     /// Applies the detector's silence rule. Public for tests and for manual nudging.
     func tick() {
         guard state == .running, let lastEnd = lastInterviewerEnd else { return }

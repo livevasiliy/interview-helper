@@ -81,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 unavailableShortcuts.append(shortcut)
             }
         }
+        overlay.show()
         render(state: session.state, warnings: session.warnings)
 
         // First run: guide the user through setup.
@@ -201,14 +202,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem?.button?.toolTip = "Interview Helper: " + line
         statusLine?.title = line.count > 90 ? String(line.prefix(87)) + "…" : line
 
-        // The overlay appears when a session starts and goes away when it ends.
+        // Starting or stopping a session never touches the overlay: ⌃⌥Space only switches listening
+        // on and off. The overlay is shown at launch and hidden only by ⌃⌥O, the × button or the menu.
         let active: Bool
         switch state {
         case .starting, .running, .stopping: active = true
         case .idle, .failed: active = false
         }
-        if active && !sessionWasActive { overlay?.show() }
-        if !active && sessionWasActive, case .idle = state { overlay?.hide() }
         sessionWasActive = active
 
         switch state {
