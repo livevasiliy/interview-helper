@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusLine: NSMenuItem?
     private var infoLine: NSMenuItem?
     private var toggleItem: NSMenuItem?
+    private var updateItem: NSMenuItem?
     private var window: NSWindow?
     private var hotKeys: [GlobalHotKey] = []
     private var unavailableShortcuts: [Shortcut] = []
@@ -59,6 +60,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .combineLatest(setupModel.$state)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] settings, setup in self?.renderInfo(settings: settings, setup: setup) }
+            .store(in: &cancellables)
+
+        setupModel.updates.start { [weak self] in self?.setupModel.settings.checkForUpdates ?? false }
+        setupModel.updates.$available
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.renderUpdateItem() }
             .store(in: &cancellables)
 
         session.onNeedsSetup = { [weak self] missing in
@@ -148,6 +155,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: tr("Show/Hide Overlay    %@", Shortcut.toggleOverlay.symbols), action: #selector(toggleOverlay), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: tr("Settings…"), action: #selector(showSettings), keyEquivalent: ",").target = self
+        let update = menu.addItem(withTitle: tr("Check for Updates…"), action: #selector(checkForUpdates), keyEquivalent: "")
+        update.target = self
+        updateItem = update
+        renderUpdateItem()
         menu.addItem(.separator())
         menu.addItem(withTitle: "Debug: Test System Audio (5 s)", action: #selector(testSystemAudio), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Debug: Test Microphone (5 s)", action: #selector(testMicrophone), keyEquivalent: "").target = self
@@ -240,6 +251,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .analyzeScreen: session.analyzeScreen()
         case .toggleOverlay: overlay?.toggle()
         case .openSettings: showSettings()
+        }
+    }
+
+    /// "Update to vX…" appears in the menu once a newer release is known; otherwise a manual check.
+    private func renderUpdateItem() {
+        if let release = setupModel.updates.available {
+            updateItem?.title = tr("Update to %@…", release.version.description)
+        } else {
+            updateItem?.title = tr("Check for Updates…")
+        }
+    }
+
+    @objc func checkForUpdates() {
+        if setupModel.updates.available != nil {
+            setupModel.updates.installAvailable()
+        } else {
+            showSettings()
+            setupModel.selectedTab = .settings
+            setupModel.updates.checkNow()
         }
     }
 

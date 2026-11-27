@@ -239,6 +239,8 @@ private struct SettingsFormView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
+            UpdatesSection(updates: model.updates, enabled: $model.settings.checkForUpdates)
+
             Section(tr("Overlay")) {
                 HStack {
                     Text(tr("Text size"))
@@ -281,5 +283,30 @@ private struct NoteEditor: View {
                         .accessibilityHidden(true)
                 }
             }
+    }
+}
+
+
+private struct UpdatesSection: View {
+    @ObservedObject var updates: UpdateService
+    @Binding var enabled: Bool
+
+    var body: some View {
+        Section(tr("Updates")) {
+            LabeledContent(tr("Version"), value: updates.currentVersion)
+            Toggle(tr("Check for updates automatically"), isOn: $enabled)
+            HStack {
+                if !updates.status.isEmpty {
+                    Text(updates.status).font(.footnote).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(tr("Check now")) { updates.checkNow() }.disabled(updates.isChecking)
+                if updates.available != nil {
+                    Button(tr("Update")) { updates.installAvailable() }.buttonStyle(.borderedProminent)
+                }
+            }
+            Text(tr("Once every few hours the app asks GitHub for the latest release. Nothing about you is sent, and updates are never installed without your confirmation."))
+                .font(.footnote).foregroundStyle(.secondary)
+        }
     }
 }

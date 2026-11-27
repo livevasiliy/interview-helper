@@ -78,6 +78,10 @@ Manual run list lives in `.10x/decisions/qa/interview-helper.md` (verified so fa
 
 `.10x/` holds the team-process state (specs, ADRs, per-role decisions, `status.md`, `handoff.md`, security/privacy review). Read `.10x/decisions/sde/interview-helper.md` for the running implementation log and deviations. The folder is not a git repository yet.
 
+## Updates
+
+`UpdateChecker` (Core, tested) reads `api.github.com/repos/livevasiliy/interview-helper/releases/latest` and compares its tag with `CFBundleShortVersionString` (taken from `MARKETING_VERSION` in `project.yml`: bump it for every release, or the updater offers the same version forever). `UpdateService` (App) checks 30 s after launch and then at most every 6 h, announces a new version only in the menu and Settings, and installs on confirmation by running `scripts/install.sh` pinned to the release tag (so the tag must contain that script). Release assets must be named `InterviewHelper.dmg` and `InterviewHelper.dmg.sha256` (`scripts/build-release.sh` produces them). Only apps in `/Applications` or `~/Applications` are replaced; a dev build just opens the release page.
+
 ## Privacy and policy notes to preserve
 
 Audio goes to Deepgram; questions, history and the pasted resume go to the chosen answer provider (free tiers may use submitted data for training: don't send sensitive data; Ollama keeps answers local). Never log keys or transcript text. Using live AI help may violate an interviewer's or employer's rules; the app must not claim to be undetectable.

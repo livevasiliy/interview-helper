@@ -42,6 +42,7 @@ final class SetupViewModel: ObservableObject {
     /// Set when macOS has no room for the menu bar icon, so the user knows how to reach the app.
     @Published private(set) var menuBarNote: String?
 
+    let updates = UpdateService()
     private var activationObserver: NSObjectProtocol?
 
     init(

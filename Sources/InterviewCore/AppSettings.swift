@@ -80,6 +80,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var microphoneDeviceUID: String
     /// Also look for questions in what the user says into the microphone (testing, or an in-room interviewer).
     public var answerMicrophoneQuestions: Bool
+    /// Look for a newer release in the background (one anonymous request to GitHub every few hours).
+    public var checkForUpdates: Bool
     /// Base font size of the overlay's answer text, in points. Everything else scales from it.
     public var overlayTextSize: Double
 
@@ -102,6 +104,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         roleContext: String = "",
         microphoneDeviceUID: String = "",
         answerMicrophoneQuestions: Bool = false,
+        checkForUpdates: Bool = true,
         overlayTextSize: Double = AppSettings.defaultOverlayTextSize
     ) {
         self.answerProvider = answerProvider
@@ -117,6 +120,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.roleContext = roleContext
         self.microphoneDeviceUID = microphoneDeviceUID
         self.answerMicrophoneQuestions = answerMicrophoneQuestions
+        self.checkForUpdates = checkForUpdates
         self.overlayTextSize = Self.clampTextSize(overlayTextSize)
     }
 
@@ -172,7 +176,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case interviewLanguage, uiLanguage
         case language   // legacy free-text answer language, read only
         case hideOverlayFromCapture, resume, roleContext
-        case microphoneDeviceUID, answerMicrophoneQuestions, overlayTextSize
+        case microphoneDeviceUID, answerMicrophoneQuestions, overlayTextSize, checkForUpdates
     }
 
     public init(from decoder: Decoder) throws {
@@ -197,6 +201,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         roleContext = try c.decodeIfPresent(String.self, forKey: .roleContext) ?? d.roleContext
         microphoneDeviceUID = try c.decodeIfPresent(String.self, forKey: .microphoneDeviceUID) ?? d.microphoneDeviceUID
         answerMicrophoneQuestions = try c.decodeIfPresent(Bool.self, forKey: .answerMicrophoneQuestions) ?? d.answerMicrophoneQuestions
+        checkForUpdates = try c.decodeIfPresent(Bool.self, forKey: .checkForUpdates) ?? d.checkForUpdates
         overlayTextSize = Self.clampTextSize(try c.decodeIfPresent(Double.self, forKey: .overlayTextSize) ?? d.overlayTextSize)
     }
 
@@ -215,6 +220,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try c.encode(roleContext, forKey: .roleContext)
         try c.encode(microphoneDeviceUID, forKey: .microphoneDeviceUID)
         try c.encode(answerMicrophoneQuestions, forKey: .answerMicrophoneQuestions)
+        try c.encode(checkForUpdates, forKey: .checkForUpdates)
         try c.encode(overlayTextSize, forKey: .overlayTextSize)
     }
 
