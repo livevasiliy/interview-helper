@@ -1,0 +1,50 @@
+import Carbon.HIToolbox
+
+/// The app's global keyboard shortcuts, defined once so the menu, overlay hints and Settings never disagree.
+enum Shortcut: CaseIterable {
+    case startStop
+    case answerNow
+    case toggleOverlay
+    case openSettings
+
+    /// Shown in the UI. ⌃ Control, ⌥ Option, ↩ Return.
+    var symbols: String {
+        switch self {
+        case .startStop: return "⌃⌥Space"
+        case .answerNow: return "⌃⌥↩"
+        case .toggleOverlay: return "⌃⌥O"
+        case .openSettings: return "⌃⌥,"
+        }
+    }
+
+    /// Full description for Settings and the menu.
+    var title: String {
+        switch self {
+        case .startStop: return "Start / stop session"
+        case .answerNow: return "Answer now: send what was just heard"
+        case .toggleOverlay: return "Show / hide overlay"
+        case .openSettings: return "Open settings (⌘, also works while this app is active)"
+        }
+    }
+
+    /// Short label for the overlay's hint line.
+    var shortTitle: String {
+        switch self {
+        case .startStop: return "start / stop"
+        case .answerNow: return "answer now"
+        case .toggleOverlay: return "hide"
+        case .openSettings: return "settings"
+        }
+    }
+
+    var keyCode: Int {
+        switch self {
+        case .startStop: return kVK_Space
+        case .answerNow: return kVK_Return
+        case .toggleOverlay: return kVK_ANSI_O
+        case .openSettings: return kVK_ANSI_Comma
+        }
+    }
+
+    var modifiers: Int { controlKey | optionKey }
+}

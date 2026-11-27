@@ -1,0 +1,35 @@
+name: InterviewHelper
+options:
+  bundleIdPrefix: dev.interviewhelper
+  deploymentTarget:
+    macOS: "13.0"
+packages:
+  InterviewHelperCore:
+    path: .
+configFiles:
+  Debug: Local.xcconfig
+  Release: Local.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  InterviewHelper-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - App
+    dependencies:
+      - package: InterviewHelperCore
+        product: InterviewCore
+    settings:
+      base:
+        PRODUCT_NAME: InterviewHelper
+        PRODUCT_BUNDLE_IDENTIFIER: dev.interviewhelper.app
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/InterviewHelper.entitlements
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "Apple Development"
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
